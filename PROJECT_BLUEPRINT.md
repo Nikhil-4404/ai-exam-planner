@@ -24,19 +24,21 @@ Academic students face significant challenges in managing their study schedules 
 
 ### Core Modules
 1.  **Student Profiler:**
-    *   Input: Exams config (Name, Date, Syllabus count).
-    *   Input: Subject metadata (Name, Difficulty rating 1-10, Competency level).
+    *   Input: Exams config (Name, Date).
+    *   Input: **Detailed Syllabus Parsing** (List of Topics/Chapters per subject).
+    *   Input: Topic Metadata (Weightage, Difficulty, Status: Pending/Done).
     *   Input: Constraints (Daily study hours, focused time slots).
 2.  **Strategy Engine (The "Brain"):**
-    *   Calculates "Study Urgency Score" for each unit.
+    *   Calculates "Study Urgency Score" for **each specific topic**.
+    *   Prioritizes high-weightage topics that are incomplete.
     *   Allocates hours based on weighted priorities.
     *   Interleaves subjects to prevent burnout (spaced repetition logic).
 3.  **Plan Generator:**
-    *   Output: Daily schedule (What to study, when, and for how long).
+    *   Output: **Granular Daily Schedule** (e.g., "Study Physics: Thermodynamics - 2 hours").
     *   Output: Revision slots vs. New learning slots.
 4.  **Dashboard & Tracker:**
-    *   Mark topics as "Done".
-    *   Visual progress bars per subject.
+    *   Mark specific topics as "Done".
+    *   Visual progress bars per subject and per module.
     *   Analytics: "Projected Syllabus Completion Date".
 
 ---
@@ -48,14 +50,14 @@ Academic students face significant challenges in managing their study schedules 
 We will use a **Streamlit** (Python) web application architecture. This allows us to build a modern, interactive web UI using *only* Python, making it perfect for an AI/Data-focused academic project.
 
 ### Diagram Descriptions
-*   **Data Layer:** SQLite Database (stores User Profiles, Exam Data, Logs).
+*   **Data Layer:** SQLite Database (stores User Profiles, Exam Data, Logs, **Topic Registry**).
 *   **Logic Layer (Python):** `PlannerEngine` class, `UserSession` manager.
 *   **Presentation Layer:** Streamlit Frontend (Sidebar for inputs, Main area for dashboards and tables).
 
 ### Data Flow
-1.  User enters data -> `Input Form`
-2.  Data validated -> `JSON/Dict Structure`
-3.  `PlannerEngine` runs heuristics -> Generates `Pandas DataFrame` (Schedule)
+1.  User inputs syllabus topics -> `Topic Registry`
+2.  Data validated -> `JSON/Topic Objects`
+3.  `PlannerEngine` runs heuristics on **Topic Level** -> Generates `Pandas DataFrame` (Schedule)
 4.  `Streamlit` renders DataFrame -> Interactive Table/Calendar
 
 ---
@@ -66,29 +68,32 @@ The core "Intelligence" comes from a **Weighted Priority Algorithm**.
 
 ### Key Heuristics
 1.  **Days Remaining ($D_r$)**: $ExamDate - CurrentDate$
-2.  **Content Remaining ($C_r$)**: $TotalChapters - CompletedChapters$
+2.  **Topic Weight ($T_w$)**: Importance of the specific topic (High/Med/Low).
 3.  **Difficulty Factor ($W_d$)**: User-rated difficulty (1.0 to 2.0 multiplier).
 4.  **Urgency Score ($S_u$)**:
-    $$ S_u = \frac{C_r \times W_d}{D_r} $$
+    $$ S_u = \frac{T_w \times W_d}{D_r} $$
     *(Higher score = Higher priority)*
 
 ### Algorithm Pseudocode
 ```python
-def generate_study_plan(subjects, total_hours_per_day):
+def generate_study_plan(topics_list, total_hours_per_day):
     plan = {}
-    total_urgency = sum(s.urgency_score for s in subjects)
+    # Filter only incomplete topics
+    pending_topics = [t for t in topics_list if t.status != 'Done']
     
-    for subject in subjects:
-        # Allocate time proportional to urgency
-        allocation_ratio = subject.urgency_score / total_urgency
+    total_urgency = sum(t.calculate_urgency() for t in pending_topics)
+    
+    for topic in pending_topics:
+        # Allocate time proportional to topic urgency
+        allocation_ratio = topic.urgency_score / total_urgency
         study_hours = total_hours_per_day * allocation_ratio
         
-        # Rule: Minimum 30 mins, Max 3 hours per block
-        study_hours = clamp(study_hours, 0.5, 3.0)
+        # Rule: Minimum 30 mins, Max 2 hours per specific topic
+        study_hours = clamp(study_hours, 0.5, 2.0)
         
-        plan[subject.name] = study_hours
+        plan[topic.name] = study_hours
         
-    return optimize_schedule(plan) # Interleave subjects using simple logic
+    return optimize_schedule(plan)
 ```
 
 ---
@@ -106,43 +111,48 @@ def generate_study_plan(subjects, total_hours_per_day):
 ### Implementation Phases
 
 **Phase 1: The Core Logic (Week 1-2)**
-*   Define `Subject` and `Exam` classes.
+*   Define `Subject`, `Exam`, and **`Topic`** classes.
 *   Implement the `calculate_priority()` and `allocate_time()` functions.
 *   Test with mock data in a Jupyter Notebook.
 
 **Phase 2: The Interface (Week 3-4)**
 *   Set up Streamlit.
-*   Create forms for inputting subjects and exam dates.
+*   Create forms for inputting subjects, topics, and exam dates.
 *   Display the raw schedule (DataFrame) on screen.
 
 **Phase 3: Persistence & Polish (Week 5-6)**
-*   Save user data to SQLite so it persists after restart.
-*   Add the "Mark as Done" feature updates the `ContentRemaining`.
-*   Add progress charts (Pie chart of syllabus coverage).
+*   **Database Integration**: Save nested topic data to SQLite.
+*   **Add Topic**: UI to add list of topics to a subject.
+*   **Mark as Done**: Checkbox for specific topics finishes them.
 
 ---
 
 ## 6. Sample Data Models & I/O
 
-**Input (Student Profile):**
+**Input (Student Profile - Nested):**
 ```json
 {
   "student_name": "Alex",
   "daily_hours": 6,
   "subjects": [
-    {"name": "Physics", "difficulty": 8, "chapters_left": 12, "exam_date": "2023-11-10"},
-    {"name": "English", "difficulty": 3, "chapters_left": 5, "exam_date": "2023-11-15"}
+    {
+      "name": "Physics", 
+      "exam_date": "2023-11-10",
+      "topics": [
+          {"name": "Thermodynamics", "difficulty": 8, "status": "Pending"},
+          {"name": "Kinematics", "difficulty": 4, "status": "Done"}
+      ]
+    }
   ]
 }
 ```
 
 **Output (Generated Plan - Visualized as Table):**
 
-| Date       | Subject | Activity       | Duration | Priority Reason |
+| Date       | Subject | Topic          | Duration | Priority Reason |
 |------------|---------|----------------|----------|-----------------|
-| 2023-10-01 | Physics | Learn New Ch 1 | 2.5 Hrs  | High Weightage  |
-| 2023-10-01 | English | Revision A     | 1.0 Hrs  | Easy / Cleanup  |
-| 2023-10-01 | Physics | Practice Qs    | 1.0 Hrs  | Reinforcement   |
+| 2023-10-01 | Physics | Thermodynamics | 2.0 Hrs  | High Difficulty |
+| 2023-10-01 | English | Poetry Rev 1   | 1.0 Hrs  | Easy / Cleanup  |
 
 ---
 
