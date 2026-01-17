@@ -185,3 +185,5 @@ def generate_study_plan(topics_list, total_hours_per_day):
 
 **5. Conclusion**
 > "The system successfully reduces planning overhead, allowing students to focus on execution."
+
+---
