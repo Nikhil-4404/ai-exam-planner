@@ -6,7 +6,10 @@ class Subject:
         self.difficulty = difficulty  # 1-10
         self.chapters_total = chapters_total
         self.chapters_done = chapters_done
-        self.exam_date = datetime.datetime.strptime(exam_date, "%Y-%m-%d").date()
+        if isinstance(exam_date, str):
+            self.exam_date = datetime.datetime.strptime(exam_date, "%Y-%m-%d").date()
+        else:
+            self.exam_date = exam_date
 
     @property
     def chapters_remaining(self):
@@ -15,8 +18,9 @@ class Subject:
     @property
     def days_remaining(self):
         today = datetime.date.today()
+        # If exam is in the past, treat as 1 day (Urgent!) 
         delta = (self.exam_date - today).days
-        return max(1, delta)  # Avoid division by zero
+        return max(1, delta) 
 
     def calculate_urgency(self):
         # Heuristic: (Difficulty * Chapters Left) / Days Left
@@ -40,7 +44,7 @@ def get_study_plan_data(subjects, daily_hours):
         note = ""
 
         if sub.chapters_remaining == 0:
-            note = "Revision Only"
+            note = "✅ 100% Complete"
             urgency = 0 
         elif urgency > 0 and total_urgency > 0:
             allocation = (urgency / total_urgency) * daily_hours

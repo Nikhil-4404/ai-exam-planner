@@ -75,19 +75,29 @@ if st.button("🚀 Generate Study Plan", type="primary"):
     subject_objects = []
     
     for s in st.session_state.subjects:
-        # Pass date as string because our prototype expects it, or modify object
-        # The prototype expects 'YYYY-MM-DD' string currently. Let's fix that wrapper.
-        # Actually our Subject class expects a string in __init__, let's format it.
-        date_str = s['exam_date'].strftime("%Y-%m-%d")
-        obj = Subject(s['name'], s['difficulty'], s['chapters_total'], s['chapters_done'], date_str)
+        # Pass date object directly now that prototype supports it
+        obj = Subject(s['name'], s['difficulty'], s['chapters_total'], s['chapters_done'], s['exam_date'])
         subject_objects.append(obj)
 
     # Get Data
     plan_data = get_study_plan_data(subject_objects, daily_hours)
     
     if not plan_data:
-        st.warning("No plan generated. Check your inputs.")
+        st.warning("No plan generated. Add subjects or check inputs.")
     else:
+        # Metrics Dashboard
+        st.divider()
+        m1, m2, m3 = st.columns(3)
+        
+        # Calculate next deadline
+        upcoming_exams = sorted([s for s in subject_objects if s.days_remaining < 30], key=lambda x: x.days_remaining)
+        next_exam = upcoming_exams[0].name if upcoming_exams else "None"
+        days_to_next = upcoming_exams[0].days_remaining if upcoming_exams else "-"
+
+        m1.metric("📚 Subjects Tracked", len(subject_objects))
+        m2.metric("⏳ Next Exam", next_exam, delta=f"{days_to_next} Days")
+        m3.metric("🧠 Study Efficiency", f"{daily_hours} Hrs", "Target")
+
         st.success("Analysis Complete! Here is your strategy.")
         
         # Display as DataFrame
@@ -99,12 +109,13 @@ if st.button("🚀 Generate Study Plan", type="primary"):
         # Colour highlighting
         def highlight_urgency(val):
             color = 'green'
-            if val > 1.0: color = 'red'
-            elif val > 0.5: color = 'orange'
-            return f'color: {color}'
+            if val > 1.5: color = '#ff4b4b' # Red
+            elif val > 0.8: color = '#ffa421' # Orange
+            return f'color: {color}; font-weight: bold'
 
         st.dataframe(
-            df.style.applymap(highlight_urgency, subset=['Urgency Score']),
+            df.style.applymap(highlight_urgency, subset=['Urgency Score'])
+                    .format({"Urgency Score": "{:.2f}", "Allocated Hours": "{:.2f} hrs"}),
             use_container_width=True
         )
 
