@@ -1,85 +1,120 @@
 import datetime
 
+class Topic:
+    def __init__(self, name, weightage=1.0, is_completed=False):
+        self.name = name
+        self.weightage = weightage # 1.0 = Normal, 1.5 = High Importance
+        self.is_completed = is_completed
+
 class Subject:
-    def __init__(self, name, difficulty, chapters_total, chapters_done, exam_date):
+    def __init__(self, name, difficulty, exam_date, topics=None):
         self.name = name
         self.difficulty = difficulty  # 1-10
-        self.chapters_total = chapters_total
-        self.chapters_done = chapters_done
+        
         if isinstance(exam_date, str):
             self.exam_date = datetime.datetime.strptime(exam_date, "%Y-%m-%d").date()
         else:
             self.exam_date = exam_date
+            
+        self.topics = topics if topics else []
 
     @property
-    def chapters_remaining(self):
-        return max(0, self.chapters_total - self.chapters_done)
+    def topics_remaining(self):
+        return [t for t in self.topics if not t.is_completed]
 
     @property
     def days_remaining(self):
         today = datetime.date.today()
-        # If exam is in the past, treat as 1 day (Urgent!) 
         delta = (self.exam_date - today).days
         return max(1, delta) 
 
-    def calculate_urgency(self):
-        # Heuristic: (Difficulty * Chapters Left) / Days Left
-        # We use a base weight of 1.0 so even Difficulty 0 gets scheduled if work remains
-        # Formula: Weight ranges from 1.0 (Diff 0) to 2.0 (Diff 10)
-        weight = 1.0 + (self.difficulty / 10.0)
-        score = (self.chapters_remaining * weight) / self.days_remaining
+    def calculate_topic_urgency(self, topic):
+        """
+        Calculates urgency for a SINGLE topic within this subject.
+        Formula: (TopicWeight * SubjectDifficulty) / DaysRemaining
+        """
+        # Base multiplier from 1.0 (at diff 0) to 2.0 (at diff 10)
+        diff_multiplier = 1.0 + (self.difficulty / 10.0)
+        
+        score = (topic.weightage * diff_multiplier) / self.days_remaining
         return score
 
 def get_study_plan_data(subjects, daily_hours):
     """
-    Core functional logic that returns the plan data structure.
-    Used by both the CLI (wrapper) and the Web UI.
+    Generates a granular plan allocating time to specific topics.
     """
-    total_urgency = sum(s.calculate_urgency() for s in subjects)
-    plan_data = []
+    # 1. Gather ALL pending topics across ALL subjects
+    all_pending_items = []
+    total_system_urgency = 0.0
 
     for sub in subjects:
-        urgency = sub.calculate_urgency()
-        allocation = 0.0
-        note = ""
+        for topic in sub.topics_remaining:
+            urgency = sub.calculate_topic_urgency(topic)
+            total_system_urgency += urgency
+            all_pending_items.append({
+                "subject": sub.name,
+                "topic": topic.name,
+                "urgency": urgency,
+                "date": sub.exam_date
+            })
 
-        if sub.chapters_remaining == 0:
-            note = "✅ 100% Complete"
-            urgency = 0 
-        elif urgency > 0 and total_urgency > 0:
-            allocation = (urgency / total_urgency) * daily_hours
+    plan_data = []
+
+    # 2. Check if user is free
+    if not all_pending_items:
+        return []
+
+    # 3. Allocate time
+    # We sort items by urgency to ensure high priority stuff gets listed first
+    all_pending_items.sort(key=lambda x: x['urgency'], reverse=True)
+
+    for item in all_pending_items:
+        if total_system_urgency > 0:
+            allocation = (item['urgency'] / total_system_urgency) * daily_hours
+            
+            # Rule: Cap max time per topic to avoid burnout on one thing (max 2 hours)
+            # Rule: Min time to be useful (min 15 mins), otherwise it might be too granular
+            if allocation < 0.25: allocation = 0.0 # Skip negligible tasks
+            
+            # Round clean
             allocation = round(allocation * 4) / 4
-        
-        plan_data.append({
-            "Subject": sub.name,
-            "Allocated Hours": allocation,
-            "Urgency Score": round(urgency, 2),
-            "Status Note": note,
-            "Exam Date": sub.exam_date
-        })
+            
+            if allocation > 0:
+                plan_data.append({
+                    "Subject": item['subject'],
+                    "Topic": item['topic'],
+                    "Allocated Hours": allocation,
+                    "Urgency Score": round(item['urgency'], 2),
+                    "Exam Date": item['date']
+                })
 
-    # Sort by urgency
-    plan_data.sort(key=lambda x: x["Urgency Score"], reverse=True)
     return plan_data
 
 def generate_plan(subjects, daily_hours):
     # Wrapper for CLI
-    print(f"--- Generating Plan for {datetime.date.today()} ---")
-    print(f"Available Time: {daily_hours} hours\n") # Added this back for full backward compatibility
+    print(f"--- Generating Graluar Plan for {datetime.date.today()} ---")
     data = get_study_plan_data(subjects, daily_hours)
     
-    print(f"{'Subject':<15} | {'Hours':<10} | {'Urgency Score':<15} | {'Note'}")
+    if not data:
+        print("No pending topics found! Great job.")
+        return
+
+    print(f"{'Subject':<15} | {'Topic':<20} | {'Hours':<10} | {'Score'}")
     print("-" * 65)
     for p in data:
-        hours_str = str(p['Allocated Hours']) if p['Allocated Hours'] > 0 else "-"
-        print(f"{p['Subject']:<15} | {hours_str:<10} | {p['Urgency Score']:.2f}             | {p['Status Note']}")
+        print(f"{p['Subject']:<15} | {p['Topic']:<20} | {p['Allocated Hours']:<10} | {p['Urgency Score']}")
 
-# Example Usage
 if __name__ == "__main__":
-    my_subjects = [
-        Subject("Mathematics", difficulty=4, chapters_total=20, chapters_done=20, exam_date="2026-02-15"),
-        Subject("History", difficulty=2, chapters_total=15, chapters_done=4, exam_date="2026-02-01"),
-        Subject("Physics", difficulty=0, chapters_total=18, chapters_done=0, exam_date="2026-02-10"),
-    ]
+    # Test Data
+    math = Subject("Math", 8, "2026-02-15", [
+        Topic("Algebra", 1.5), # High weight
+        Topic("Geometry", 1.0),
+        Topic("Trig", 1.0, is_completed=True)
+    ])
+    
+    physics = Subject("Physics", 5, "2026-02-10", [
+        Topic("Kinematics", 1.0),
+        Topic("Dynamics", 1.2)
+    ])
 
-    generate_plan(my_subjects, daily_hours=6.0)
+    generate_plan([math, physics], 6.0)
