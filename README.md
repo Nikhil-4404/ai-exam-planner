@@ -82,13 +82,4 @@ This is an academic project, but contributions are welcome!
 4.  Push to the Branch (`git push origin feature/AmazingFeature`)
 5.  Open a Pull Request
 
----
 
-## 📞 Support
-
-If you encounter any issues or have questions about the logic:
-*   Open an issue in this repository.
-*   Review the `PROJECT_BLUEPRINT.md` for detailed system analysis.
-
----
-*Created by Nikhil-4404*
