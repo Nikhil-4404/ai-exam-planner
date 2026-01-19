@@ -67,7 +67,7 @@
 ## 📁 Project Structure
 
 *   `app.py`: The main entry point. Contains the Streamlit frontend code.
-*   `prototype.py`: The logical core. Contains the `Subject`, `Topic` classes and the `get_study_plan_data` algorithm.
+*   `prototype.py`: The logical core. Contains the `Subject`, `Topic` classes and the   `get_study_plan_data` algorithm.
 *   `PROJECT_BLUEPRINT.md`: Comprehensive academic report and architectural design document.
 
 ---

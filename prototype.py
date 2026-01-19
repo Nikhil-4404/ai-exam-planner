@@ -1,13 +1,15 @@
 import datetime
 
 class Topic:
-    def __init__(self, name, weightage=1.0, is_completed=False):
+    def __init__(self, name, weightage=1.0, is_completed=False, id=None):
+        self.id = id
         self.name = name
-        self.weightage = weightage # 1.0 = Normal, 1.5 = High Importance
+        self.weightage = weightage 
         self.is_completed = is_completed
 
 class Subject:
-    def __init__(self, name, difficulty, exam_date, topics=None):
+    def __init__(self, name, difficulty, exam_date, topics=None, id=None):
+        self.id = id
         self.name = name
         self.difficulty = difficulty  # 1-10
         
