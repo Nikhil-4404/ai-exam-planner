@@ -130,11 +130,13 @@ if st.button("🚀 Generate Granular Study Plan", type="primary"):
         st.download_button("📥 Download CSV", csv, "plan.csv", "text/csv")
 
 # --- FEATURE 3: Sidebar Countdown ---
-if st.session_state.subjects:
+# --- FEATURE 3: Sidebar Countdown ---
+if db_subjects:
     st.sidebar.markdown("---")
     st.sidebar.subheader("⏳ Upcoming Exams")
     # Sort subjects by date
-    sorted_subs = sorted(st.session_state.subjects, key=lambda x: x['exam_date'])
+    # db_subjects stores dates as date objects already from get_all_data
+    sorted_subs = sorted(db_subjects, key=lambda x: x['exam_date'])
     for sub in sorted_subs:
         d_left = (sub['exam_date'] - datetime.date.today()).days
         if d_left < 0:
