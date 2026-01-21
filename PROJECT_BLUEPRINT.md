@@ -4,19 +4,20 @@
 
 ### Project Title
 **SmartStudy: AI-Driven Personalized Exam Preparation & Strategy Planner**
+*(Evolving into a Full-Stack Adaptive Learning System)*
 
 ### Problem Statement
 Academic students face significant challenges in managing their study schedules due to a lack of personalized planning tools. Generic timetables fail to account for individual learning speeds, varying subject grasp, and specific syllabus requirements, resulting in suboptimal exam performance and increased anxiety.
 
 ### Objectives
-1.  To develop a system that captures a student's academic profile, including strong/weak areas and available study time.
-2.  To implement a rule-based AI engine that prioritizes subjects based on exam proximity, difficulty, and weightage.
-3.  To generate a dynamic, day-by-day study and revision schedule.
-4.  To provide a visual dashboard tracking progress and adherence to the plan.
+1.  **To develop an intelligent system** that parses syllabi (PDFs) and assesses student difficulty levels using Natural Language Processing (NLP/RAG).
+2.  **To implement an adaptive scheduling algorithm** that prioritizes subjects based on exam proximity, difficulty, and weightage, moving beyond static dates.
+3.  **To integrate Spaced Repetition (SRS)** principles into the study plan to ensure long-term retention.
+4.  To provide a mobile-responsive dashboard for tracking progress and adherence to the plan.
 
 ### Scope and Limitations
-*   **Scope:** Capturing user constraints, generating schedules, tracking completion, and simple progress analytics.
-*   **Limitations:** The "AI" is primarily heuristic/rule-based, not a deep learning model. It relies on honest self-assessment data from the user.
+*   **Scope:** Syllabus parsing from PDFs, adaptive re-scheduling, tracking completions, and multi-platform access.
+*   **Limitations:** The initial "AI" is heuristic/rule-based, evolving into a Retrieval-Augmented Generation (RAG) model for syllabus parsing.
 
 ---
 
@@ -25,17 +26,17 @@ Academic students face significant challenges in managing their study schedules 
 ### Core Modules
 1.  **Student Profiler:**
     *   Input: Exams config (Name, Date).
-    *   Input: **Detailed Syllabus Parsing** (List of Topics/Chapters per subject).
-    *   Input: Topic Metadata (Weightage, Difficulty, Status: Pending/Done).
+    *   Input: **Detailed Syllabus Parsing** (Uploaded PDF -> List of Topics via LLM).
+    *   Input: Topic Metadata (Weightage, Difficulty, SRS Status).
     *   Input: Constraints (Daily study hours, focused time slots).
 2.  **Strategy Engine (The "Brain"):**
-    *   Calculates "Study Urgency Score" for **each specific topic**.
+    *   Calculates "Study Urgency Score" using **Adaptive Logic**.
     *   Prioritizes high-weightage topics that are incomplete.
+    *   Implements **Spaced Repetition** (Review intervals: 1d, 3d, 7d).
     *   Allocates hours based on weighted priorities.
-    *   Interleaves subjects to prevent burnout (spaced repetition logic).
 3.  **Plan Generator:**
     *   Output: **Granular Daily Schedule** (e.g., "Study Physics: Thermodynamics - 2 hours").
-    *   Output: Revision slots vs. New learning slots.
+    *   Output: Dynamic adjustment based on yesterday's completion.
 4.  **Dashboard & Tracker:**
     *   Mark specific topics as "Done".
     *   Visual progress bars per subject and per module.
@@ -46,19 +47,21 @@ Academic students face significant challenges in managing their study schedules 
 ## 3. System Design and Architecture
 
 ### Architecture Pattern
-**Modular Monolith with Data-Science-Centric UI**
-We will use a **Streamlit** (Python) web application architecture. This allows us to build a modern, interactive web UI using *only* Python, making it perfect for an AI/Data-focused academic project.
+**Current Phase: Python Monolith (Streamlit)**
+**Future Phase: Full-Stack MERN + Python Service**
+
+We are currently building the **Python Core** (Logic & AI) which will serve as the backend intelligence for the future Full-Stack application.
 
 ### Diagram Descriptions
-*   **Data Layer:** SQLite Database (stores User Profiles, Exam Data, Logs, **Topic Registry**).
-*   **Logic Layer (Python):** `PlannerEngine` class, `UserSession` manager.
-*   **Presentation Layer:** Streamlit Frontend (Sidebar for inputs, Main area for dashboards and tables).
+*   **Data Layer:** SQLite (Current) -> MongoDB (Future).
+*   **Logic Layer (Python):** `PlannerEngine` (Heuristics) -> `RAG_Agent` (Syllabus Parser).
+*   **Presentation Layer:** Streamlit (Prototype) -> React.js (Production).
 
 ### Data Flow
-1.  User inputs syllabus topics -> `Topic Registry`
-2.  Data validated -> `JSON/Topic Objects`
-3.  `PlannerEngine` runs heuristics on **Topic Level** -> Generates `Pandas DataFrame` (Schedule)
-4.  `Streamlit` renders DataFrame -> Interactive Table/Calendar
+1.  User uploads PDF Syllabus -> `Python RAG Service` extracts Topics.
+2.  Topics stored in `Database`.
+3.  `PlannerEngine` runs adaptive heuristics -> Generates `Schedule`.
+4.  Frontend renders interactive Schedule.
 
 ---
 
@@ -101,29 +104,31 @@ def generate_study_plan(topics_list, total_hours_per_day):
 ## 5. Python Tech Stack and Implementation Plan
 
 ### Tech Stack
-*   **Language:** Python 3.9+
-*   **Frontend/App Framework:** **Streamlit** (Highly recommended for "wow" factor with low code).
+*   **Backend/AI Logic:** Python 3.9+ (LangChain/LlamaIndex for RAG).
+*   **Prototype UI:** **Streamlit** (Current).
+*   **Production UI:** **React.js** (Future Roadmap).
+*   **Database:** **SQLite** (Current) -> **MongoDB** (Future).
 *   **Data Manipulation:** **Pandas** (For handling time-series data and tables).
 *   **Math/Logic:** **NumPy** (For weighted calculations).
-*   **Database:** **SQLite** (Built-in, zero config) or simple **JSON files** for MVP.
-*   **Visualization:** **Plotly** or **Altair** (Built into Streamlit).
 
 ### Implementation Phases
 
-**Phase 1: The Core Logic (Week 1-2)**
-*   Define `Subject`, `Exam`, and **`Topic`** classes.
-*   Implement the `calculate_priority()` and `allocate_time()` functions.
-*   Test with mock data in a Jupyter Notebook.
+**Phase 1: The Core Logic (Completed)**
+*   Define `Subject`, `Exam`, and `Topic` classes.
+*   Implement urgency calculation.
 
-**Phase 2: The Interface (Week 3-4)**
-*   Set up Streamlit.
-*   Create forms for inputting subjects, topics, and exam dates.
-*   Display the raw schedule (DataFrame) on screen.
+**Phase 2: The Interface (Completed)**
+*   Streamlit UI with Login.
+*   Granular Topic Input (Manual).
 
-**Phase 3: Persistence & Polish (Week 5-6)**
-*   **Database Integration**: Save nested topic data to SQLite.
-*   **Add Topic**: UI to add list of topics to a subject.
-*   **Mark as Done**: Checkbox for specific topics finishes them.
+**Phase 3: Persistence (Completed)**
+*   SQLite Database Integration.
+*   Progress Tracking (Checkboxes).
+
+**Phase 4: Advanced AI Features (New Target)**
+*   **Syllabus Parsing:** Upload PDF -> Auto-populate topics.
+*   **Adaptive Scheduling:** Adjust plan based on "Missed Tasks".
+*   **Migration:** Prepare backend API for React frontend.
 
 ---
 
