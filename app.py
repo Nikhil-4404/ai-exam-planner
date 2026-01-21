@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import datetime
+import pypdf
 from prototype import Subject, Topic, get_study_plan_data
 import database as db
 
@@ -14,6 +15,28 @@ st.set_page_config(
     layout="wide"
 )
 
+def extract_text_from_pdf(uploaded_file):
+    """
+    Simulate RAG/NLP Parsing: 
+    Extracts text and splits it into potential topics using heuristics.
+    In Phase 4, this will be replaced by an LLM call.
+    """
+    try:
+        reader = pypdf.PdfReader(uploaded_file)
+        full_text = ""
+        for page in reader.pages:
+            full_text += page.extract_text() + "\n"
+        
+        # Simple heuristic: Split by newlines, filter short lines
+        # This mimics finding "Topic 1: ..." lines
+        lines = [line.strip() for line in full_text.split('\n') if len(line.strip()) > 5]
+        
+        # Return top 20 lines as "detected topics" for now
+        # Ideally, an LLM would summarize this.
+        return ", ".join(lines[:20]) 
+    except Exception as e:
+        return f"Error parsing PDF: {e}"
+
 def login_page():
     """Simple Login Page logic"""
     st.title("🔐 Login to SmartStudy")
@@ -24,8 +47,6 @@ def login_page():
         submitted = st.form_submit_button("Login")
         
         if submitted:
-            # For now, accept any input as requested ("just create a login page")
-            # In future phases, we will verify credentials
             if username: 
                 st.session_state.logged_in = True
                 st.success("Logged in successfully!")
@@ -82,13 +103,41 @@ def main_app():
             name = c1.text_input("Name")
             date = c2.date_input("Exam Date", datetime.date.today() + datetime.timedelta(days=30))
             diff = st.slider("Difficulty", 1, 10, 5)
-            topics_str = st.text_area("Topics (comma separated)", placeholder="Algebra, Geometry")
+            
+            # PDF Upload Feature (Phase 4 Prototype)
+            st.markdown("---")
+            st.write("📄 **AI Syllabus Parser (Beta)**")
+            uploaded_pdf = st.file_uploader("Upload Syllabus PDF", type="pdf")
+            
+            topics_placeholder = "Algebra, Geometry"
+            if uploaded_pdf is not None:
+                extracted_topics = extract_text_from_pdf(uploaded_pdf)
+                topics_placeholder = extracted_topics
+                st.info("✅ PDF Parsed! Review the extracted topics below.")
+            
+            # If PDF uploaded, we want to auto-fill this area
+            # Streamlit workaround: we can't programmatically change the 'value' of a text_area inside a form easily 
+            # without session state tricks, but for now we display the extracted text as a suggestion to copy-paste 
+            # OR we just rely on the user to see it.
+            # BETTER UX: Show the extracted text in a code block if `uploaded_pdf` exists, and ask user to paste it.
+            
+            if uploaded_pdf:
+                st.text_area("Extracted Text (Copy & Paste below if correct)", value=topics_placeholder, height=100)
+                topics_str = st.text_area("Final Topics List (comma separated)", value="", placeholder="Paste topics here...")
+            else:
+                topics_str = st.text_area("Topics (comma separated)", placeholder="Algebra, Geometry")
             
             if st.form_submit_button("Save Subject"):
                 if name:
                     s_id = db.add_subject(name, diff, date.strftime("%Y-%m-%d"))
                     # Add topics
                     raw_topics = [t.strip() for t in topics_str.split(',') if t.strip()]
+                    if not raw_topics and uploaded_pdf:
+                         # Fallback if user submitted without pasting, maybe use the placeholder?
+                         # For now, let's just warn them
+                         st.warning("Please verify and paste the topics into the text area!")
+                         return
+
                     for t in raw_topics:
                         db.add_topic(s_id, t)
                     st.success(f"Added {name}!")
