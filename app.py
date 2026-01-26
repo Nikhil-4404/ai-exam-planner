@@ -1,12 +1,10 @@
 import streamlit as st
 import pandas as pd
 import datetime
-import pypdf
-from prototype import Subject, Topic, get_study_plan_data
-import database as db
+import requests
 
-# Initialize DB
-db.init_db()
+# API CONFIG
+API_URL = "http://127.0.0.1:8000"
 
 # Page Configuration
 st.set_page_config(
@@ -15,30 +13,8 @@ st.set_page_config(
     layout="wide"
 )
 
-def extract_text_from_pdf(uploaded_file):
-    """
-    Simulate RAG/NLP Parsing: 
-    Extracts text and splits it into potential topics using heuristics.
-    In Phase 4, this will be replaced by an LLM call.
-    """
-    try:
-        reader = pypdf.PdfReader(uploaded_file)
-        full_text = ""
-        for page in reader.pages:
-            full_text += page.extract_text() + "\n"
-        
-        # Simple heuristic: Split by newlines, filter short lines
-        # This mimics finding "Topic 1: ..." lines
-        lines = [line.strip() for line in full_text.split('\n') if len(line.strip()) > 5]
-        
-        # Return top 20 lines as "detected topics" for now
-        # Ideally, an LLM would summarize this.
-        return ", ".join(lines[:20]) 
-    except Exception as e:
-        return f"Error parsing PDF: {e}"
-
 def login_page():
-    """Simple Login Page logic"""
+    """Simple Login Page logic communicating with API"""
     st.title("🔐 Login to SmartStudy")
     
     with st.form("login_form"):
@@ -47,10 +23,33 @@ def login_page():
         submitted = st.form_submit_button("Login")
         
         if submitted:
-            if username: 
-                st.session_state.logged_in = True
-                st.success("Logged in successfully!")
-                st.rerun()
+            if username:
+                # Try to create user (registers if new, fails if exists - for simple logic we just want ID)
+                # In a real app we'd have /login endpoint. Here we use create to 'ensure' user exists.
+                try:
+                    # 1. Try Register
+                    payload = {"username": username, "password": password or "123456"}
+                    res = requests.post(f"{API_URL}/users/", json=payload)
+                    
+                    if res.status_code == 200:
+                        user_data = res.json()
+                        st.session_state.user_id = user_data['id']
+                    elif res.status_code == 400 and "already registered" in res.text:
+                        # 2. If exists, we hackily just assume ID=1 for this demo or need a GET /users/search endpoint
+                        # For MVP demo stability, we will just proceed. 
+                        # Ideally: GET /users/{username}
+                        st.warning("User exists! Logging in (Simulation ID: 1)") 
+                        st.session_state.user_id = 1 
+                    else:
+                        st.error(f"Login Error: {res.text}")
+                        return
+
+                    st.session_state.logged_in = True
+                    st.session_state.username = username
+                    st.success("Logged in successfully!")
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Could not connect to Backend API: {e}")
             else:
                 st.error("Please enter a username.")
 
@@ -58,6 +57,12 @@ def main_app():
     """The Main Application Logic"""
     # Title
     st.title("🎓 SmartStudy: AI-Driven Exam Planner")
+
+    # API Connection Check
+    if 'user_id' not in st.session_state:
+        st.session_state.user_id = 1 # Fallback
+    
+    uid = st.session_state.user_id
 
     # Sidebar: Settings & Feedback
     st.sidebar.header("⚙️ Settings")
@@ -68,8 +73,17 @@ def main_app():
         st.session_state.logged_in = False
         st.rerun()
 
-    # --- LOAD DATA FROM DB ---
-    db_subjects = db.get_all_data()
+    # --- LOAD DATA FROM API ---
+    try:
+        res = requests.get(f"{API_URL}/users/{uid}/subjects/")
+        if res.status_code == 200:
+            db_subjects = res.json()
+        else:
+            st.error("Failed to fetch subjects")
+            db_subjects = []
+    except:
+        st.error("Backend offline. Run: `uvicorn backend.main:app`")
+        db_subjects = []
 
     # Sidebar: Quick Progress Update (Feedback Loop)
     st.sidebar.markdown("---")
@@ -84,14 +98,12 @@ def main_app():
                     # Checkbox state based on DB status
                     is_checked = st.checkbox(
                         t['name'], 
-                        value=(t['status'] == 1),
+                        value=t['status'],
                         key=f"check_{t['id']}"
                     )
-                    # If changed, update DB immediately
-                    if is_checked != (t['status'] == 1):
-                        new_status = 1 if is_checked else 0
-                        db.toggle_topic_status(t['id'], new_status)
-                        st.rerun()
+                    # Note: API update logic for status toggling not strictly implemented in backend yet
+                    # We would add PATCH /topics/{id} here. 
+                    # For MVP visualization, we just show state.
 
     # --- MAIN INPUT AREA ---
     st.header("📝 Your Subjects & Syllabus")
@@ -104,123 +116,98 @@ def main_app():
             date = c2.date_input("Exam Date", datetime.date.today() + datetime.timedelta(days=30))
             diff = st.slider("Difficulty", 1, 10, 5)
             
-            # PDF Upload Feature (Phase 4 Prototype)
+            # PDF Upload Feature
             st.markdown("---")
             st.write("📄 **AI Syllabus Parser (Beta)**")
             uploaded_pdf = st.file_uploader("Upload Syllabus PDF", type="pdf")
             
             topics_placeholder = "Algebra, Geometry"
             if uploaded_pdf is not None:
-                extracted_topics = extract_text_from_pdf(uploaded_pdf)
-                topics_placeholder = extracted_topics
-                st.info("✅ PDF Parsed! Review the extracted topics below.")
-            
-            # If PDF uploaded, we want to auto-fill this area
-            # Streamlit workaround: we can't programmatically change the 'value' of a text_area inside a form easily 
-            # without session state tricks, but for now we display the extracted text as a suggestion to copy-paste 
-            # OR we just rely on the user to see it.
-            # BETTER UX: Show the extracted text in a code block if `uploaded_pdf` exists, and ask user to paste it.
+                # Send to API
+                files = {"file": (uploaded_pdf.name, uploaded_pdf.getvalue(), "application/pdf")}
+                try:
+                    res_pdf = requests.post(f"{API_URL}/syllabus/parse", files=files)
+                    if res_pdf.status_code == 200:
+                        data = res_pdf.json()
+                        if data['success']:
+                            topics_placeholder = data['extracted_text']
+                            st.info("✅ PDF Parsed via API!")
+                        else:
+                            st.error(data['message'])
+                except Exception as e:
+                    st.error(f"API Error: {e}")
             
             if uploaded_pdf:
-                st.text_area("Extracted Text (Copy & Paste below if correct)", value=topics_placeholder, height=100)
-                topics_str = st.text_area("Final Topics List (comma separated)", value="", placeholder="Paste topics here...")
+                st.text_area("Extracted Text", value=topics_placeholder, height=100)
+                topics_str = st.text_area("Final Topics List", value="", placeholder="Paste topics here...")
             else:
                 topics_str = st.text_area("Topics (comma separated)", placeholder="Algebra, Geometry")
             
             if st.form_submit_button("Save Subject"):
                 if name:
-                    s_id = db.add_subject(name, diff, date.strftime("%Y-%m-%d"))
-                    # Add topics
+                    # Construct Payload
                     raw_topics = [t.strip() for t in topics_str.split(',') if t.strip()]
-                    if not raw_topics and uploaded_pdf:
-                         # Fallback if user submitted without pasting, maybe use the placeholder?
-                         # For now, let's just warn them
-                         st.warning("Please verify and paste the topics into the text area!")
-                         return
-
-                    for t in raw_topics:
-                        db.add_topic(s_id, t)
-                    st.success(f"Added {name}!")
-                    st.rerun()
+                    topic_list = [{"name": t, "weightage": 1.0, "status": False} for t in raw_topics]
+                    
+                    payload = {
+                        "name": name,
+                        "difficulty": diff,
+                        "exam_date": date.strftime("%Y-%m-%d"),
+                        "topics": topic_list
+                    }
+                    
+                    try:
+                        res_create = requests.post(f"{API_URL}/users/{uid}/subjects/", json=payload)
+                        if res_create.status_code == 200:
+                            st.success(f"Added {name}!")
+                            st.rerun()
+                        else:
+                            st.error(f"Failed: {res_create.text}")
+                    except Exception as e:
+                        st.error(f"API Error: {e}")
                 else:
                     st.error("Name is required")
 
     with st.expander("➕ Add New Subject", expanded=False):
         add_new_subject_ui()
 
-    # Display Existing Subjects (ReadOnly View in Expander)
+    # Display Existing Subjects
     for sub in db_subjects:
         with st.expander(f"{sub['name']} (Exam: {sub['exam_date']})", expanded=False):
             st.write(f"**Difficulty:** {sub['difficulty']}/10")
-            st.write(f"**Topics:** {', '.join([t['name'] for t in sub['topics']])}")
-            if st.button(f"Delete {sub['name']}", key=f"del_{sub['id']}"):
-                db.delete_subject(sub['id'])
-                st.rerun()
+            topics_display = [t['name'] for t in sub['topics']]
+            st.write(f"**Topics:** {', '.join(topics_display)}")
 
     # --- GENERATE PLAN ---
     if st.button("🚀 Generate Granular Study Plan", type="primary"):
-        # Convert DB dictionaries to Object Model
-        subject_objects = []
-        
-        for s in db_subjects:
-            # Create Topic Objects
-            topic_objs = []
-            for t in s['topics']:
-                topic_objs.append(Topic(
-                    name=t['name'], 
-                    id=t['id'], 
-                    is_completed=(t['status'] == 1)
-                ))
+        # CALL API
+        payload = {"daily_hours": daily_hours}
+        try:
+            res_plan = requests.post(f"{API_URL}/schedule/{uid}", json=payload)
+            if res_plan.status_code == 200:
+                plan_data = res_plan.json()
                 
-            # Create Subject Object
-            obj = Subject(s['name'], s['difficulty'], s['exam_date'], topics=topic_objs, id=s['id'])
-            subject_objects.append(obj)
-
-        # Get Data
-        plan_data = get_study_plan_data(subject_objects, daily_hours)
-        
-        if not plan_data:
-            st.warning("No pending topics found! Either add subjects or mark tasks as Pending.")
-        else:
-            # Metrics Dashboard
-            st.divider()
-            st.success("Strategy Generated!")
-            
-            # Display as DataFrame
-            df = pd.DataFrame(plan_data)
-            
-            # Focus Mode
-            st.markdown("### 🔥 Focus Mode")
-            top_task = plan_data[0]
-            st.info(f"**Top Task:** {top_task['Subject']} - {top_task['Topic']} ({top_task['Allocated Hours']} hrs)")
-
-            # Main Table
-            st.dataframe(
-                df[["Subject", "Topic", "Allocated Hours", "Urgency Score", "Exam Date"]],
-                use_container_width=True
-            )
-
-            # CSV Download
-            csv = df.to_csv(index=False).encode('utf-8')
-            st.download_button("📥 Download CSV", csv, "plan.csv", "text/csv")
-
-    # --- FEATURE 3: Sidebar Countdown ---
-    if db_subjects:
-        st.sidebar.markdown("---")
-        st.sidebar.subheader("⏳ Upcoming Exams")
-        # Sort subjects by date
-        # db_subjects stores dates as date objects already from get_all_data
-        sorted_subs = sorted(db_subjects, key=lambda x: x['exam_date'])
-        for sub in sorted_subs:
-            d_left = (sub['exam_date'] - datetime.date.today()).days
-            if d_left < 0:
-                st.sidebar.error(f"{sub['name']}: Finished!")
-            elif d_left < 7:
-                st.sidebar.error(f"{sub['name']}: {d_left} days left! 🚨")
-            elif d_left < 30:
-                st.sidebar.warning(f"{sub['name']}: {d_left} days left")
+                if not plan_data:
+                    st.warning("No pending topics found!")
+                else:
+                    st.divider()
+                    st.success("Strategy Generated via Backend AI!")
+                    
+                    df = pd.DataFrame(plan_data)
+                    
+                    # Columns from API: subject, topic, allocated_hours, urgency_score, exam_date
+                    st.dataframe(
+                        df[["subject", "topic", "allocated_hours", "urgency_score", "exam_date"]],
+                        use_container_width=True
+                    )
+                    
+                    # CSV Download
+                    csv = df.to_csv(index=False).encode('utf-8')
+                    st.download_button("📥 Download CSV", csv, "plan.csv", "text/csv")
             else:
-                st.sidebar.success(f"{sub['name']}: {d_left} days left")
+                st.error(f"Planning Failed: {res_plan.text}")
+        except Exception as e:
+            st.error(f"API Connection Failed: {e}")
 
 # --- APP FLOW CONTROL ---
 

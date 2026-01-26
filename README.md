@@ -36,38 +36,46 @@
 
 2.  **Install dependencies**:
     ```bash
-    pip install streamlit pandas plotly
+    pip install streamlit pandas plotly fastapi uvicorn sqlalchemy pypdf python-multipart
     ```
 
-3.  **Run the application**:
+3.  **Run the application (Dual-Terminal Setup)**:
+
+    **Terminal 1: Start the Backend API**
+    ```bash
+    python -m uvicorn backend.main:app --reload
+    ```
+    *(Keep this terminal running. The API will be live at http://127.0.0.1:8000)*
+
+    **Terminal 2: Start the Frontend UI**
     ```bash
     streamlit run app.py
     ```
-    *This will automatically open the planner in your default web browser (http://localhost:8501).*
+    *(This will open the planner in your browser at http://localhost:8501)*
 
 ---
 
 ## 📖 Usage Guide
 
-1.  **Configure Settings**: Use the sidebar to set your **Daily Study Hours** (e.g., 4 hours).
-2.  **Add Subjects**:
-    *   Enter the Subject Name (e.g., "History").
-    *   Set the **Exam Date**.
-    *   Adjust the **Difficulty Slider** (1 = Easy, 10 = Very Hard).
-3.  **Input Syllabus**:
-    *   In the text area, paste your topics separated by commas.
-    *   *Example*: `World War 1, French Revolution, Cold War`
+1.  **Login/Register**: Create a username to start your session.
+2.  **Configure Settings**: Use the sidebar to set your **Daily Study Hours**.
+3.  **Add Subjects**:
+    *   Enter Subject Name, Exam Date, and Difficulty.
+    *   **PDF Upload**: Upload a syllabus PDF to automatically extract topics!
 4.  **Generate Plan**: Click **"🚀 Generate Granular Study Plan"**.
-5.  **View Results**:
-    *   See a color-coded table of what strictly needs to be studied today.
-    *   Check the "Urgency Score" to understand why a topic was chosen.
+5.  **View Results**: See your AI-generated schedule with urgency scores.
 
 ---
 
 ## 📁 Project Structure
 
-*   `app.py`: The main entry point. Contains the Streamlit frontend code.
-*   `prototype.py`: The logical core. Contains the `Subject`, `Topic` classes and the   `get_study_plan_data` algorithm.
+*   `app.py`: The **Frontend Client** (Streamlit). Communicates with the backend API.
+*   `backend/`: The **Backend Server** (FastAPI).
+    *   `main.py`: API Endpoints.
+    *   `models.py`: Database Models (SQLAlchemy).
+    *   `logic.py`: The Core Priority Algorithm.
+    *   `parser.py`: The PDF Syllabus Parser.
+*   `tests/`: API Test scripts.
 *   `PROJECT_BLUEPRINT.md`: Comprehensive academic report and architectural design document.
 
 ---
