@@ -1,13 +1,24 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Calendar, Save, Trash2, BookOpen, UploadCloud } from 'lucide-react';
 import client from '../api/client';
 
-const SubjectForm = ({ onAdd }) => {
+const SubjectForm = ({ onAdd, initialData = null, onCancel }) => {
     const [name, setName] = useState('');
     const [date, setDate] = useState('');
     const [difficulty, setDifficulty] = useState(5);
     const [topics, setTopics] = useState('');
     const [isUploading, setIsUploading] = useState(false);
+
+    useEffect(() => {
+        if (initialData) {
+            setName(initialData.name);
+            setDate(initialData.exam_date);
+            setDifficulty(initialData.difficulty);
+            // Convert topics array to comma-separated string
+            const topicString = initialData.topics.map(t => t.name).join(', ');
+            setTopics(topicString);
+        }
+    }, [initialData]);
 
     const handlePdfUpload = async (e) => {
         const file = e.target.files[0];
@@ -23,8 +34,6 @@ const SubjectForm = ({ onAdd }) => {
             });
 
             if (res.data.success) {
-                // Determine update strategy: Append or Replace? 
-                // Let's append if something exists
                 const newText = res.data.extracted_text;
                 setTopics(prev => prev ? prev + ", " + newText : newText);
             } else {
@@ -40,15 +49,28 @@ const SubjectForm = ({ onAdd }) => {
     const handleSubmit = (e) => {
         e.preventDefault();
         onAdd({ name, date, difficulty, topics });
-        setName('');
-        setDate('');
-        setDifficulty(5);
-        setTopics('');
+
+        // Only clear if adding new, otherwise we might be editing
+        if (!initialData) {
+            setName('');
+            setDate('');
+            setDifficulty(5);
+            setTopics('');
+        }
     };
 
     return (
-        <form onSubmit={handleSubmit} className="card">
-            <h3>➕ Add New Subject</h3>
+        <form onSubmit={handleSubmit} className="card" style={{ border: initialData ? '1px solid #f59e0b' : '' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                <h3 style={{ margin: 0 }}>
+                    {initialData ? '✏️ Edit Subject' : '➕ Add New Subject'}
+                </h3>
+                {onCancel && (
+                    <button type="button" className="btn btn-ghost" onClick={onCancel}>
+                        Cancel
+                    </button>
+                )}
+            </div>
 
             <div>
                 <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-muted)' }}>Subject Name</label>
@@ -93,7 +115,7 @@ const SubjectForm = ({ onAdd }) => {
             </div>
 
             <button type="submit" className="btn btn-primary" style={{ width: '100%' }}>
-                <Save size={18} style={{ marginRight: '8px' }} /> Save Subject
+                <Save size={18} style={{ marginRight: '8px' }} /> {initialData ? 'Update Subject' : 'Save Subject'}
             </button>
         </form>
     );

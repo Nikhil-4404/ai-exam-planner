@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import client from '../api/client';
 import { useNavigate } from 'react-router-dom';
-import { BookOpen, Calendar, Rocket, Clock, GraduationCap, Grid, List, CheckCircle, AlertCircle, Trash2 } from 'lucide-react';
+import { BookOpen, Calendar, Rocket, Clock, GraduationCap, Grid, List, CheckCircle, AlertCircle, Trash2, Edit2 } from 'lucide-react';
 import SubjectForm from '../components/SubjectForm';
 
 const SummaryCard = ({ title, value, icon: Icon, color }) => (
@@ -26,6 +26,7 @@ const Dashboard = () => {
     const [subjects, setSubjects] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showAddForm, setShowAddForm] = useState(false);
+    const [editingSubject, setEditingSubject] = useState(null); // New State
     const [schedule, setSchedule] = useState(null);
     const [dailyHours, setDailyHours] = useState(4);
 
@@ -51,7 +52,7 @@ const Dashboard = () => {
         }
     };
 
-    const handleAddSubject = async (formData) => {
+    const handleSaveSubject = async (formData) => {
         const topicList = formData.topics.split(',').map(t => ({
             name: t.trim(),
             weightage: 1.0,
@@ -66,12 +67,31 @@ const Dashboard = () => {
         };
 
         try {
-            await client.post(`/users/${userId}/subjects/`, payload);
+            if (editingSubject) {
+                // Update Existing
+                await client.put(`/subjects/${editingSubject.id}`, payload);
+            } else {
+                // Create New
+                await client.post(`/users/${userId}/subjects/`, payload);
+            }
             fetchSubjects();
             setShowAddForm(false);
+            setEditingSubject(null);
         } catch (err) {
             alert("Failed: " + err.message);
         }
+    };
+
+    const handleEditClick = (subject) => {
+        setEditingSubject(subject);
+        setShowAddForm(true);
+        // Scroll to top to see form
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    const handleCancelEdit = () => {
+        setEditingSubject(null);
+        setShowAddForm(false);
     };
 
     const handleDeleteSubject = async (subjectId) => {
@@ -136,7 +156,10 @@ const Dashboard = () => {
                             <button
                                 className="btn btn-primary"
                                 style={{ padding: '0.5rem 1rem', fontSize: '0.9rem' }}
-                                onClick={() => setShowAddForm(!showAddForm)}
+                                onClick={() => {
+                                    if (showAddForm) handleCancelEdit();
+                                    else setShowAddForm(true);
+                                }}
                             >
                                 {showAddForm ? 'Close Form' : '+ Add New Subject'}
                             </button>
@@ -144,7 +167,11 @@ const Dashboard = () => {
 
                         {showAddForm && (
                             <div className="animate-enter" style={{ marginBottom: '2rem' }}>
-                                <SubjectForm onAdd={handleAddSubject} />
+                                <SubjectForm
+                                    onAdd={handleSaveSubject}
+                                    initialData={editingSubject}
+                                    onCancel={handleCancelEdit}
+                                />
                             </div>
                         )}
 
@@ -170,15 +197,24 @@ const Dashboard = () => {
                                             </div>
                                         </div>
 
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                             <div style={{
                                                 fontSize: '0.8rem',
                                                 background: sub.difficulty > 7 ? 'rgba(239,68,68,0.2)' : 'rgba(16,185,129,0.2)',
                                                 color: sub.difficulty > 7 ? '#fca5a5' : '#6ee7b7',
-                                                padding: '4px 10px', borderRadius: '20px', fontWeight: 600
+                                                padding: '4px 10px', borderRadius: '20px', fontWeight: 600, marginRight: '0.5rem'
                                             }}>
                                                 Diff: {sub.difficulty}/10
                                             </div>
+
+                                            <button
+                                                className="btn btn-ghost"
+                                                style={{ padding: '0.5rem' }}
+                                                onClick={() => handleEditClick(sub)}
+                                                title="Edit Subject"
+                                            >
+                                                <Edit2 size={18} color="#fbbf24" />
+                                            </button>
 
                                             <button
                                                 className="btn btn-ghost"

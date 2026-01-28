@@ -97,6 +97,28 @@ def delete_subject(subject_id: int, db: Session = Depends(get_db)):
     db.commit()
     return {"message": "Subject deleted successfully"}
 
+@app.put("/subjects/{subject_id}", response_model=schemas.Subject)
+def update_subject(subject_id: int, subject: schemas.SubjectCreate, db: Session = Depends(get_db)):
+    db_subject = db.query(models.Subject).filter(models.Subject.id == subject_id).first()
+    if not db_subject:
+        raise HTTPException(status_code=404, detail="Subject not found")
+    
+    # Update core fields
+    db_subject.name = subject.name
+    db_subject.difficulty = subject.difficulty
+    db_subject.exam_date = subject.exam_date
+    
+    # Update Topics: Strategy -> Wipe and Replace
+    db.query(models.Topic).filter(models.Topic.subject_id == subject_id).delete()
+    
+    for topic_data in subject.topics:
+        db_topic = models.Topic(**topic_data.dict(), subject_id=db_subject.id)
+        db.add(db_topic)
+        
+    db.commit()
+    db.refresh(db_subject)
+    return db_subject
+
 # --- SCHEDULING ---
 @app.post("/schedule/{user_id}", response_model=List[schemas.ScheduleItem])
 def generate_schedule(user_id: int, request: schemas.ScheduleRequest, db: Session = Depends(get_db)):
