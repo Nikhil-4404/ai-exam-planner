@@ -296,6 +296,11 @@ const Dashboard = () => {
                                                         <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#818cf8' }}>{item.allocated_hours}h</span>
                                                     </div>
                                                     <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>{item.topic}</div>
+                                                    {item.reason && (
+                                                        <div style={{ fontSize: '0.75rem', marginTop: '4px', color: item.reason.includes('URGENT') ? '#fca5a5' : '#86efac', fontStyle: 'italic' }}>
+                                                            {item.reason}
+                                                        </div>
+                                                    )}
                                                 </div>
                                             ))}
                                         </div>

@@ -60,12 +60,21 @@ def get_study_plan(subjects_data, daily_hours):
             allocation = round(allocation * 4) / 4
             
             if allocation > 0:
+                # Deduce Reason
+                days_until = (item['date'] - today).days
+                reason = "Balanced Review"
+                if days_until <= 3:
+                     reason = f"🚨 URGENT: Exam in {days_until} days!"
+                elif item['urgency'] > 1.0: 
+                     reason = "🔥 Focus: High Difficulty/Weight"
+                
                 plan_data.append({
                     "subject": item['subject'],
                     "topic": item['topic'],
                     "allocated_hours": allocation,
                     "urgency_score": round(item['urgency'], 2),
-                    "exam_date": item['date']
+                    "exam_date": item['date'],
+                    "reason": reason 
                 })
 
     return plan_data

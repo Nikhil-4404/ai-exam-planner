@@ -51,8 +51,9 @@ class ScheduleItem(BaseModel):
     subject: str
     topic: str
     allocated_hours: float
-    urgency_score: float # Fix typo if present in previous version (urgency_score)
+    urgency_score: float
     exam_date: date
+    reason: str = "" # AI Explanation
 
 class SyllabusResponse(BaseModel):
     success: bool
