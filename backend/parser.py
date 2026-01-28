@@ -17,55 +17,84 @@ async def extract_topics_from_pdf(file: UploadFile) -> str:
         if not full_text.strip():
             return "Error: No text found in PDF (Is it scanned?)"
 
-        # --- STRATEGY 1: Structured Extraction ---
         import re
+        
+        # --- STRATEGY: Block-Based Extraction ---
+        # 1. Identify "Units" or "Modules".
+        # 2. Extract text ONLY between these blocks.
+        # 3. Stop when hitting "Text Books" or "References".
+        
         raw_lines = full_text.split('\n')
-        candidates = []
+        extracted_topics = []
         seen = set()
         
-        bullet_pattern = r'^(\d+(\.\d+)*\.?|•|-|\*|[A-Z]\.)\s+'
-        structural_keywords = ["unit", "chapter", "module", "part", "topic"]
-        skip_keywords = ["page", "syllabus", "course code", "semester", "credit", "total hours", "books", "reference"]
-
+        # Regex to detect "UNIT I", "Module 1", "Chapter 5", etc.
+        unit_pattern = re.compile(r'^(?:UNIT|MODULE|CHAPTER)\s*(?:[-:]?)\s*(\d+|[IVX]+)', re.IGNORECASE)
+        
+        # Terms that signal the END of a syllabus block
+        stop_markers = ["text books", "references", "reference books", "course outcomes", "outcomes", "question paper pattern", "credits", "total hours"]
+        
+        is_parsing_block = False
+        
         for line in raw_lines:
             line = line.strip()
-            if len(line) < 4: continue
-                
+            if len(line) < 3: continue
+            
             lower_line = line.lower()
-            if any(k in lower_line for k in skip_keywords): continue
             
-            is_structure = any(lower_line.startswith(k) for k in structural_keywords)
-            has_bullet = re.match(bullet_pattern, line)
-            
-            is_likely_topic = (is_structure or has_bullet)
-            
-            # Fallback for structured: accept Title Case lines if not too long
-            if not is_likely_topic and len(line) < 80 and line[0].isupper() and " " in line:
-                is_likely_topic = True
+            # Check if entering a new Unit/Module
+            # We strictly only turn ON parsing when we see a Unit header
+            if unit_pattern.match(line):
+                is_parsing_block = True
+                continue 
                 
-            if is_likely_topic:
-                clean_line = re.sub(bullet_pattern, '', line).strip()
-                clean_line = clean_line.strip('.:;,')
-                if len(clean_line) > 3 and clean_line not in seen:
-                    candidates.append(clean_line)
-                    seen.add(clean_line)
-        
-        # --- STRATEGY 2: Fallback (Simple Split) ---
-        # If Strategy 1 failed (e.g. < 3 topics found), try a looser heuristic
-        if len(candidates) < 3:
-            candidates = []
-            seen = set()
-            for line in raw_lines:
-                line = line.strip()
-                if len(line) > 5 and len(line) < 100:
-                    # Just take anything that looks like a sentence/phrase
-                    if line not in seen:
-                        candidates.append(line)
-                        seen.add(line)
-        
-        # Limit to 100
-        result = ", ".join(candidates[:100])
-        return result if result else "No topics found (Check PDF format)"
+            # Check if hitting a stop section
+            if any(lower_line.startswith(marker) for marker in stop_markers):
+                is_parsing_block = False 
+                continue
+
+            # Capture Content
+            if is_parsing_block:
+                # Filter garbage (Page numbers, codes, university headers)
+                if lower_line.startswith("page") or re.match(r'^\d+$', line):
+                    continue
+                
+                # Handling Comma-Separated Topics (common in syllabi: "Topic A, Topic B...")
+                if ',' in line:
+                    parts = line.split(',')
+                    for p in parts:
+                        p = p.strip()
+                        # Remove leading bullets/numbers
+                        p = re.sub(r'^(\d+(\.\d+)*\.?|•|-|\*|[A-Z]\.)\s+', '', p)
+                        # Remove trailing periods
+                        p = p.strip('.')
+                        
+                        if len(p) > 3 and p not in seen:
+                            extracted_topics.append(p)
+                            seen.add(p)
+                else:
+                    # Single line topic
+                    clean_line = re.sub(r'^(\d+(\.\d+)*\.?|•|-|\*|[A-Z]\.)\s+', '', line)
+                    clean_line = clean_line.strip('.')
+                    if len(clean_line) > 3 and clean_line not in seen:
+                         extracted_topics.append(clean_line)
+                         seen.add(clean_line)
+
+        # --- FALLBACK ---
+        # If strict block parsing found nothing (maybe format is different), 
+        # let's try a simpler approach: Just grab everything between bullet points
+        if len(extracted_topics) < 5:
+             # Try simple bullet scan if Unit mode failed
+             for line in raw_lines:
+                 line = line.strip()
+                 # If line starts with bullet or number
+                 if re.match(r'^(\d+\.|•|-)\s+', line):
+                      clean = re.sub(r'^(\d+\.|•|-)\s+', '', line).strip('.')
+                      if len(clean) > 4 and clean not in seen:
+                          extracted_topics.append(clean)
+                          seen.add(clean)
+
+        return ", ".join(extracted_topics) if extracted_topics else "Parsing Failed: Try copying topics manually."
         
     except Exception as e:
         return f"Error parsing PDF: {str(e)}"
