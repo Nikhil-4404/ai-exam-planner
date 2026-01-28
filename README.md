@@ -34,24 +34,33 @@
     cd ai-exam-planner
     ```
 
-2.  **Install dependencies**:
+3.  **Install Backend Dependencies**:
     ```bash
-    pip install streamlit pandas plotly fastapi uvicorn sqlalchemy pypdf python-multipart
+    pip install fastapi uvicorn sqlalchemy pypdf python-multipart
     ```
 
-3.  **Run the application (Dual-Terminal Setup)**:
+4.  **Install Frontend Dependencies**:
+    ```bash
+    cd frontend
+    npm install
+    ```
+
+5.  **Run the application (Dual-Terminal Setup)**:
 
     **Terminal 1: Start the Backend API**
     ```bash
+    # (From the root directory)
     python -m uvicorn backend.main:app --reload
     ```
-    *(Keep this terminal running. The API will be live at http://127.0.0.1:8000)*
+    *(The API will be live at http://127.0.0.1:8000)*
 
     **Terminal 2: Start the Frontend UI**
     ```bash
-    streamlit run app.py
+    # (From the root directory)
+    cd frontend
+    npm run dev
     ```
-    *(This will open the planner in your browser at http://localhost:8501)*
+    *(This will open the planner in your browser at http://localhost:5173)*
 
 ---
 
