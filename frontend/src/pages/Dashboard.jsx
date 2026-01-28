@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import client from '../api/client';
 import { useNavigate } from 'react-router-dom';
-import { BookOpen, Calendar, Rocket, Clock, GraduationCap, Grid, List, CheckCircle, AlertCircle } from 'lucide-react';
+import { BookOpen, Calendar, Rocket, Clock, GraduationCap, Grid, List, CheckCircle, AlertCircle, Trash2 } from 'lucide-react';
 import SubjectForm from '../components/SubjectForm';
 
 const SummaryCard = ({ title, value, icon: Icon, color }) => (
@@ -74,6 +74,16 @@ const Dashboard = () => {
         }
     };
 
+    const handleDeleteSubject = async (subjectId) => {
+        if (!window.confirm("Are you sure you want to delete this subject?")) return;
+        try {
+            await client.delete(`/subjects/${subjectId}`);
+            setSubjects(subjects.filter(s => s.id !== subjectId));
+        } catch (err) {
+            alert("Delete failed: " + err.message);
+        }
+    };
+
     const handleGenerateSchedule = async () => {
         try {
             const res = await client.post(`/schedule/${userId}`, { daily_hours: dailyHours });
@@ -91,13 +101,13 @@ const Dashboard = () => {
     return (
         <div className="container animate-enter" style={{ paddingBottom: '4rem' }}>
             {/* Header */}
-            <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', paddingTop: '1rem' }}>
+            <header className="animate-enter" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', paddingTop: '1rem' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    <div style={{ background: 'linear-gradient(135deg, #4f46e5, #ec4899)', padding: '0.75rem', borderRadius: '12px' }}>
+                    <div style={{ background: 'linear-gradient(135deg, #4f46e5, #ec4899)', padding: '0.75rem', borderRadius: '12px', boxShadow: '0 4px 15px rgba(236, 72, 153, 0.4)' }}>
                         <GraduationCap size={32} color="white" />
                     </div>
                     <div>
-                        <h1 style={{ margin: 0, fontSize: '1.75rem' }}>SmartStudy</h1>
+                        <h1 style={{ margin: 0, fontSize: '1.75rem', background: 'linear-gradient(to right, white, #94a3b8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>SmartStudy</h1>
                         <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.9rem' }}>Welcome back, Student</p>
                     </div>
                 </div>
@@ -107,7 +117,7 @@ const Dashboard = () => {
             </header>
 
             {/* Stats Row */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem', marginBottom: '2.5rem' }}>
+            <div className="animate-enter delay-100" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem', marginBottom: '2.5rem' }}>
                 <SummaryCard title="Total Subjects" value={totalSubjects} icon={BookOpen} color="#4f46e5" />
                 <SummaryCard title="Total Topics" value={totalTopics} icon={List} color="#ec4899" />
                 <SummaryCard title="Next Exam" value={nextExam ? nextExam.name : "No Exams"} icon={Calendar} color="#f59e0b" />
@@ -120,7 +130,7 @@ const Dashboard = () => {
                 <div style={{ display: 'grid', gridTemplateColumns: '2fr 1.2fr', gap: '2rem', alignItems: 'start' }}>
 
                     {/* Main Content: Subjects List */}
-                    <div className="layout-main">
+                    <div className="layout-main animate-enter delay-200">
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
                             <h2 style={{ margin: 0, fontSize: '1.25rem' }}>Your Subjects</h2>
                             <button
@@ -159,15 +169,25 @@ const Dashboard = () => {
                                                 </div>
                                             </div>
                                         </div>
-                                        <div style={{ textAlign: 'right' }}>
+
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                                             <div style={{
                                                 fontSize: '0.8rem',
                                                 background: sub.difficulty > 7 ? 'rgba(239,68,68,0.2)' : 'rgba(16,185,129,0.2)',
                                                 color: sub.difficulty > 7 ? '#fca5a5' : '#6ee7b7',
-                                                padding: '4px 10px', borderRadius: '20px', fontWeight: 600, display: 'inline-block'
+                                                padding: '4px 10px', borderRadius: '20px', fontWeight: 600
                                             }}>
                                                 Diff: {sub.difficulty}/10
                                             </div>
+
+                                            <button
+                                                className="btn btn-ghost"
+                                                style={{ padding: '0.5rem', color: '#ef4444' }}
+                                                onClick={() => handleDeleteSubject(sub.id)}
+                                                title="Delete Subject"
+                                            >
+                                                <Trash2 size={18} />
+                                            </button>
                                         </div>
                                     </div>
                                 ))
@@ -176,8 +196,8 @@ const Dashboard = () => {
                     </div>
 
                     {/* Sidebar: Planner Generator */}
-                    <div className="layout-sidebar" style={{ position: 'sticky', top: '2rem' }}>
-                        <div className="card" style={{ background: 'linear-gradient(180deg, rgba(30,41,59,0.8), rgba(15,23,42,0.8))', border: '1px solid rgba(129, 140, 248, 0.2)' }}>
+                    <div className="layout-sidebar animate-enter delay-300" style={{ position: 'sticky', top: '2rem' }}>
+                        <div className="card animate-float" style={{ background: 'linear-gradient(180deg, rgba(30,41,59,0.8), rgba(15,23,42,0.8))', border: '1px solid rgba(129, 140, 248, 0.2)' }}>
                             <div style={{ borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '1rem', marginBottom: '1rem' }}>
                                 <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
                                     <Rocket size={20} color="#f472b6" /> Daily Planner

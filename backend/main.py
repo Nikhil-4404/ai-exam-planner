@@ -87,6 +87,16 @@ def read_subjects(user_id: int, db: Session = Depends(get_db)):
     subjects = db.query(models.Subject).filter(models.Subject.user_id == user_id).all()
     return subjects
 
+@app.delete("/subjects/{subject_id}")
+def delete_subject(subject_id: int, db: Session = Depends(get_db)):
+    db_subject = db.query(models.Subject).filter(models.Subject.id == subject_id).first()
+    if not db_subject:
+        raise HTTPException(status_code=404, detail="Subject not found")
+    
+    db.delete(db_subject)
+    db.commit()
+    return {"message": "Subject deleted successfully"}
+
 # --- SCHEDULING ---
 @app.post("/schedule/{user_id}", response_model=List[schemas.ScheduleItem])
 def generate_schedule(user_id: int, request: schemas.ScheduleRequest, db: Session = Depends(get_db)):
