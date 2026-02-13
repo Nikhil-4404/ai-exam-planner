@@ -128,3 +128,19 @@ def generate_schedule(user_id: int, request: schemas.ScheduleRequest, db: Sessio
     
     plan = logic.get_study_plan(subjects, request.daily_hours)
     return plan
+
+# --- TOPIC UPDATE ---
+from pydantic import BaseModel
+
+class TopicUpdate(BaseModel):
+    status: bool
+
+@app.patch("/topics/{topic_id}")
+def update_topic_status(topic_id: int, update: TopicUpdate, db: Session = Depends(get_db)):
+    db_topic = db.query(models.Topic).filter(models.Topic.id == topic_id).first()
+    if not db_topic:
+        raise HTTPException(status_code=404, detail="Topic not found")
+    
+    db_topic.status = update.status
+    db.commit()
+    return {"message": "Topic updated", "status": db_topic.status}

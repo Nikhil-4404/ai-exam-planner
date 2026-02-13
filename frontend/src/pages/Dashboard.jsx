@@ -114,6 +114,19 @@ const Dashboard = () => {
         }
     };
 
+    const handleMarkDone = async (topicId) => {
+        try {
+            await client.patch(`/topics/${topicId}`, { status: true });
+            // Refresh subjects to update charts
+            fetchSubjects();
+            // Optimistically remove from schedule
+            setSchedule(prev => prev.filter(item => item.topic_id !== topicId));
+        } catch (err) {
+            console.error(err);
+            alert("Failed to update status");
+        }
+    };
+
     // Derived Stats
     const totalSubjects = subjects.length;
     const totalTopics = subjects.reduce((acc, sub) => acc + sub.topics.length, 0);
@@ -299,7 +312,16 @@ const Dashboard = () => {
                                                 >
                                                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
                                                         <span style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '0.5px' }}>{item.subject}</span>
-                                                        <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#818cf8' }}>{item.allocated_hours}h</span>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                            <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#818cf8' }}>{item.allocated_hours}h</span>
+                                                            <button
+                                                                title="Mark as Done"
+                                                                onClick={() => handleMarkDone(item.topic_id)}
+                                                                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#10b981', padding: 0 }}
+                                                            >
+                                                                <CheckCircle size={16} />
+                                                            </button>
+                                                        </div>
                                                     </div>
                                                     <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>{item.topic}</div>
                                                     {item.reason && (

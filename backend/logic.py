@@ -80,6 +80,7 @@ def get_study_plan(subjects_data, daily_hours):
                 plan_data.append({
                     "subject": item['subject'],
                     "topic": item['topic'],
+                    "topic_id": item['topic_obj'].id,
                     "allocated_hours": allocation,
                     "urgency_score": round(item['urgency'], 2),
                     "exam_date": item['date'],

@@ -50,6 +50,7 @@ class ScheduleRequest(BaseModel):
 class ScheduleItem(BaseModel):
     subject: str
     topic: str
+    topic_id: int  # Used for completing tasks
     allocated_hours: float
     urgency_score: float
     exam_date: date
