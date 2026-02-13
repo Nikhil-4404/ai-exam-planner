@@ -3,6 +3,7 @@ import client from '../api/client';
 import { useNavigate } from 'react-router-dom';
 import { BookOpen, Calendar, Rocket, Clock, GraduationCap, Grid, List, CheckCircle, AlertCircle, Trash2, Edit2 } from 'lucide-react';
 import SubjectForm from '../components/SubjectForm';
+import AnalysisCharts from '../components/AnalysisCharts';
 
 const SummaryCard = ({ title, value, icon: Icon, color }) => (
     <div className="card" style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1.25rem' }}>
@@ -143,6 +144,11 @@ const Dashboard = () => {
                 <SummaryCard title="Next Exam" value={nextExam ? nextExam.name : "No Exams"} icon={Calendar} color="#f59e0b" />
                 <SummaryCard title="Study Goal" value={`${dailyHours} hrs/day`} icon={Clock} color="#10b981" />
             </div>
+
+            {/* Analytics Section */}
+            {!loading && subjects.length > 0 && (
+                <AnalysisCharts subjects={subjects} />
+            )}
 
             {loading ? (
                 <div style={{ textAlign: 'center', color: 'var(--text-muted)' }}>Loading your planner...</div>
