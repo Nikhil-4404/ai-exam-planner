@@ -2,16 +2,25 @@ import datetime
 
 def calculate_topic_urgency(topic, subject_difficulty, days_remaining):
     """
-    Calculates urgency for a SINGLE topic.
-    Formula: (TopicWeight * SubjectDifficulty) / DaysRemaining
+    Calculates urgency using Modified Ebbinghaus Forgetting Curve logic.
+    Score = (Unfamiliarity * Difficulty * ExamUrgency)
     """
-    # Base multiplier from 1.0 (at diff 0) to 2.0 (at diff 10)
-    diff_multiplier = 1.0 + (subject_difficulty / 10.0)
+    # 1. Exam Urgency (The closer the exam, the higher the score)
+    # Avoid div by zero, minimum 1 day
+    days_to_exam = max(1, days_remaining)
+    # Square root curve for smoother urgency ramp-up
+    urgency_factor = 10.0 / (days_to_exam ** 0.5) 
+
+    # 2. Subject Difficulty Multiplier (1.0 to 2.0)
+    difficulty_mult = 1.0 + (subject_difficulty / 10.0)
+
+    # 3. Spaced Repetition / Decay Factor (Simulated)
+    # Higher weightage topics have a higher "cost" if forgotten.
+    decay_weight = topic.weightage 
+
+    # Final Score Combination
+    score = (decay_weight * difficulty_mult) * urgency_factor
     
-    # Avoid division by zero
-    effective_days = max(1, days_remaining)
-    
-    score = (topic.weightage * diff_multiplier) / effective_days
     return score
 
 def get_study_plan(subjects_data, daily_hours):
