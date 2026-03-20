@@ -1,0 +1,16 @@
+{
+  "name": "Exam Preparation Strategy Planner",
+  "short_name": "Exam Planner",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#fff7ef",
+  "theme_color": "#fff7ef",
+  "description": "Plan exam prep with subject priorities, milestone tracking, and weekly study strategy.",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
