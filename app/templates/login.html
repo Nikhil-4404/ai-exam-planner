@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Login to access the AI Exam Preparation Strategy Planner."
+    />
+    <title>{{ app_name }} Login</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', path='/styles.css') }}" />
+    <script>
+      const savedTheme = localStorage.getItem('theme') || 'dark';
+      document.documentElement.setAttribute('data-theme', savedTheme);
+    </script>
+  </head>
+  <body>
+    <main class="auth-shell">
+      <section class="auth-layout">
+        <section class="auth-showcase">
+          <div class="auth-showcase-inner">
+            <div class="auth-showcase-copy">
+              <span class="eyebrow">AI Study OS</span>
+              <h1>Plan Smarter. Study Sharper. Walk In Ready.</h1>
+              <p class="auth-lead">
+                Sign in to access your personal exam planning workspace with AI-generated
+                strategy maps, saved study plans, and print-ready exports.
+              </p>
+            </div>
+
+            <div class="auth-showcase-bottom">
+              <div class="auth-stat-grid">
+                <article class="auth-stat-card">
+                  <span>AI coaching</span>
+                  <strong>Focused plans</strong>
+                  <p>Turn weak subjects, stress level, and weekly hours into a practical preparation roadmap.</p>
+                </article>
+                <article class="auth-stat-card">
+                  <span>Private workspace</span>
+                  <strong>Saved history</strong>
+                  <p>Track multiple strategy versions, reopen older plans, and keep everything in one place.</p>
+                </article>
+              </div>
+
+              <div class="auth-visual-card">
+                <div class="auth-visual-top">
+                  <span class="visual-dot"></span>
+                  <span class="visual-dot"></span>
+                  <span class="visual-dot"></span>
+                </div>
+                <div class="auth-visual-body">
+                  <div class="visual-line strong"></div>
+                  <div class="visual-line medium"></div>
+                  <div class="visual-pill-row">
+                    <span>Priority subjects</span>
+                    <span>Weekly sprint</span>
+                    <span>Risk alerts</span>
+                  </div>
+                  <div class="visual-chart">
+                    <span style="height: 42%"></span>
+                    <span style="height: 68%"></span>
+                    <span style="height: 54%"></span>
+                    <span style="height: 88%"></span>
+                    <span style="height: 72%"></span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="hero-notes auth-notes">
+                <span>Protected dashboard</span>
+                <span>Saved plans</span>
+                <span>PDF exports</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="auth-stage">
+          <section class="panel auth-page-panel premium-auth-panel">
+            <div class="auth-brand-row">
+              <div class="auth-brand-mark">EP</div>
+              <div>
+                <span class="kicker">Exam Planner</span>
+                <h2>Welcome back</h2>
+              </div>
+            </div>
+
+            <div class="panel-head auth-panel-head">
+              <span class="kicker">Authentication</span>
+              <p id="auth-status" class="status-pill">Please log in to continue</p>
+            </div>
+
+            <p class="auth-panel-copy">
+              Sign in to enter your planner dashboard, or create an account to start saving AI-generated study plans.
+            </p>
+
+            <div class="auth-tabs">
+              <button class="auth-tab active-tab" data-target="login-form">Log in</button>
+              <button class="auth-tab" data-target="register-form">Sign up</button>
+            </div>
+
+            <div class="auth-forms-container">
+              <form id="login-form" class="card-form login-card auth-main-card">
+                <label>
+                  <span>Email</span>
+                  <input name="email" type="email" required />
+                </label>
+                <label>
+                  <span>Password</span>
+                  <input name="password" type="password" minlength="8" required />
+                </label>
+                <button type="submit" class="primary-button">Enter Planner</button>
+              </form>
+
+              <form id="register-form" class="card-form register-card auth-secondary-card hidden">
+                <div class="auth-inline-grid">
+                  <label>
+                    <span>Name</span>
+                    <input name="name" required />
+                  </label>
+                  <label>
+                    <span>Email</span>
+                    <input name="email" type="email" required />
+                  </label>
+                </div>
+                <label>
+                  <span>Password</span>
+                  <input name="password" type="password" minlength="8" required />
+                </label>
+                <button type="submit" class="primary-button">Create account & Enter</button>
+              </form>
+            </div>
+          </section>
+        </section>
+      </section>
+    </main>
+
+    <button id="theme-toggle" class="theme-toggle" aria-label="Toggle theme">
+      <svg class="sun-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+      <svg class="moon-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: none;"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+    </button>
+    <script>
+      const themeToggleBtn = document.getElementById('theme-toggle');
+      themeToggleBtn.addEventListener('click', () => {
+        let theme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', theme);
+        localStorage.setItem('theme', theme);
+      });
+    </script>
+
+    <script src="{{ url_for('static', path='/auth.js') }}" defer></script>
+  </body>
+</html>

@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="AI-powered exam preparation strategy planner built with Python, FastAPI, saved plans, and PDF export."
+    />
+    <title>{{ app_name }}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', path='/styles.css') }}" />
+    <script>
+      const savedTheme = localStorage.getItem('theme') || 'dark';
+      document.documentElement.setAttribute('data-theme', savedTheme);
+    </script>
+  </head>
+  <body>
+    <main class="shell">
+      <section class="hero">
+        <div class="hero-copy">
+          <span class="eyebrow">Python + FastAPI + OpenAI</span>
+          <h1>AI Exam Preparation Strategy Planner</h1>
+          <p>
+            Generate a strategy, save it to your account, reopen it later, and
+            export the final plan as a PDF.
+          </p>
+          <div class="hero-notes">
+            <span>Signed in as {{ user_name }}</span>
+            <span>SQLite saved plans</span>
+            <span>PDF export</span>
+          </div>
+        </div>
+        <div class="hero-card">
+          <h2>Planner dashboard</h2>
+          <ul>
+            <li>Create and compare multiple study strategies</li>
+            <li>Store your best plans in the saved library</li>
+            <li>Download PDF versions when you are ready</li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="top-grid">
+        <section class="panel auth-panel">
+          <div class="panel-head">
+            <div>
+              <span class="kicker">Account</span>
+              <h2>Your session</h2>
+            </div>
+            <p id="auth-status" class="status-pill" data-variant="success">Signed in</p>
+          </div>
+
+          <div id="account-card" class="account-card">
+            <div>
+              <span class="kicker">Active user</span>
+              <h3 id="account-name">{{ user_name }}</h3>
+              <p id="account-email">{{ user_email }}</p>
+            </div>
+            <button type="button" id="logout-button" class="ghost-button">Logout</button>
+          </div>
+        </section>
+
+        <section class="panel saved-panel">
+          <div class="panel-head">
+            <div>
+              <span class="kicker">Library</span>
+              <h2>Saved study plans</h2>
+            </div>
+            <p>Save after each generation so you can compare versions over time.</p>
+          </div>
+          <div class="actions compact-actions">
+            <button type="button" id="save-plan" class="primary-button">Save current plan</button>
+            <button type="button" id="export-current-pdf" class="secondary-button">Export current PDF</button>
+          </div>
+          <div id="saved-plans" class="saved-plans empty-state">
+            Loading your saved plans...
+          </div>
+        </section>
+      </section>
+
+      <section class="layout">
+        <section class="panel">
+          <div class="panel-head">
+            <div>
+              <span class="kicker">Input</span>
+              <h2>Planner profile</h2>
+            </div>
+            <p>Fill in the exam details and let the AI coach draft a personalized strategy.</p>
+          </div>
+
+          <form id="planner-form" class="planner-form">
+            <div class="grid two">
+              <label>
+                <span>Exam name</span>
+                <input name="exam_name" value="UPSC Prelims 2026" required />
+              </label>
+              <label>
+                <span>Target date</span>
+                <input name="target_date" type="date" required />
+              </label>
+              <label>
+                <span>Study hours per week</span>
+                <input name="weekly_hours" type="number" min="1" max="100" value="24" required />
+              </label>
+              <label>
+                <span>Target score (%)</span>
+                <input name="target_score" type="number" min="1" max="100" value="82" required />
+              </label>
+              <label>
+                <span>Confidence level (%)</span>
+                <input name="confidence_level" type="number" min="0" max="100" value="58" required />
+              </label>
+              <label>
+                <span>Stress level (%)</span>
+                <input name="stress_level" type="number" min="0" max="100" value="43" required />
+              </label>
+              <label>
+                <span>Study style</span>
+                <select name="study_style">
+                  <option>Balanced</option>
+                  <option>Concept-first</option>
+                  <option>Practice-heavy</option>
+                </select>
+              </label>
+              <label>
+                <span>Constraints</span>
+                <input
+                  name="constraints"
+                  placeholder="e.g. College classes after 2 PM, low energy on Sundays"
+                />
+              </label>
+            </div>
+
+            <div class="subjects-head">
+              <div>
+                <span class="kicker">Subjects</span>
+                <h2>Performance data</h2>
+              </div>
+              <button type="button" id="add-subject" class="secondary-button">Add subject</button>
+            </div>
+
+            <div id="subjects" class="subjects"></div>
+
+            <div class="actions">
+              <button type="submit" class="primary-button">Generate AI strategy</button>
+              <button type="button" id="reset-demo" class="secondary-button">Reset demo data</button>
+            </div>
+          </form>
+        </section>
+
+        <aside class="panel output-panel">
+          <div class="panel-head">
+            <div>
+              <span class="kicker">Output</span>
+              <h2>AI coach response</h2>
+            </div>
+            <p id="status-pill" class="status-pill">Waiting for inputs</p>
+          </div>
+
+          <section class="output-block">
+            <span class="section-label">Summary</span>
+            <p id="summary">Submit the form to generate a personalized strategy.</p>
+          </section>
+
+          <section class="output-block">
+            <span class="section-label">Top focus subjects</span>
+            <div id="focus-subjects" class="chip-row"></div>
+          </section>
+
+          <section class="output-block">
+            <span class="section-label">Next steps</span>
+            <ul id="next-steps" class="result-list"></ul>
+          </section>
+
+          <section class="output-block">
+            <span class="section-label">Weekly plan</span>
+            <ul id="weekly-plan" class="result-list"></ul>
+          </section>
+
+          <section class="output-block">
+            <span class="section-label">Risk alerts</span>
+            <ul id="risk-alerts" class="result-list"></ul>
+          </section>
+
+          <section class="strategy-visual-card" aria-label="Strategy chart preview">
+            <div class="auth-visual-top">
+              <span class="visual-dot"></span>
+              <span class="visual-dot"></span>
+              <span class="visual-dot"></span>
+            </div>
+            <div class="auth-visual-body planner-visual-body">
+              <div class="planner-metric-row">
+                <div class="planner-metric-head">
+                  <span>Readiness</span>
+                  <strong id="planner-line-primary-value">72%</strong>
+                </div>
+                <div id="planner-line-primary" class="visual-line strong"></div>
+              </div>
+              <div class="planner-metric-row">
+                <div class="planner-metric-head">
+                  <span>Coverage</span>
+                  <strong id="planner-line-secondary-value">58%</strong>
+                </div>
+                <div id="planner-line-secondary" class="visual-line medium"></div>
+              </div>
+              <div id="planner-pill-row" class="visual-pill-row">
+                <span>Priority subjects</span>
+                <span>Weekly sprint</span>
+                <span>Risk alerts</span>
+              </div>
+              <div id="planner-chart" class="visual-chart planner-chart">
+                <span style="height: 42%"></span>
+                <span style="height: 68%"></span>
+                <span style="height: 54%"></span>
+                <span style="height: 88%"></span>
+                <span style="height: 72%"></span>
+              </div>
+            </div>
+          </section>
+        </aside>
+      </section>
+    </main>
+
+    <button id="theme-toggle" class="theme-toggle" aria-label="Toggle theme">
+      <svg class="sun-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+      <svg class="moon-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: none;"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+    </button>
+    <script>
+      const themeToggleBtn = document.getElementById('theme-toggle');
+      themeToggleBtn.addEventListener('click', () => {
+        let theme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', theme);
+        localStorage.setItem('theme', theme);
+      });
+    </script>
+
+    <script src="{{ url_for('static', path='/planner.js') }}" defer></script>
+  </body>
+</html>
