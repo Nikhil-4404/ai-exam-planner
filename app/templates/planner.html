@@ -11,7 +11,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', path='/styles.css') }}" />
+    <link rel="stylesheet" href="{{ url_for('static', path='/styles.css') }}?v=3" />
     <script>
       const savedTheme = localStorage.getItem('theme') || 'dark';
       document.documentElement.setAttribute('data-theme', savedTheme);
@@ -21,7 +21,7 @@
     <main class="shell">
       <section class="hero">
         <div class="hero-copy">
-          <span class="eyebrow">Python + FastAPI + OpenAI</span>
+          <span class="eyebrow">Python + FastAPI + Groq</span>
           <h1>AI Exam Preparation Strategy Planner</h1>
           <p>
             Generate a strategy, save it to your account, reopen it later, and
@@ -95,7 +95,7 @@
             <div class="grid two">
               <label>
                 <span>Exam name</span>
-                <input name="exam_name" value="UPSC Prelims 2026" required />
+                <input name="exam_name" placeholder="e.g. UPSC Prelims 2026" required />
               </label>
               <label>
                 <span>Target date</span>
@@ -103,19 +103,19 @@
               </label>
               <label>
                 <span>Study hours per week</span>
-                <input name="weekly_hours" type="number" min="1" max="100" value="24" required />
+                <input name="weekly_hours" type="number" min="1" max="100" placeholder="e.g. 24" required />
               </label>
               <label>
                 <span>Target score (%)</span>
-                <input name="target_score" type="number" min="1" max="100" value="82" required />
+                <input name="target_score" type="number" min="1" max="100" placeholder="e.g. 80" required />
               </label>
               <label>
                 <span>Confidence level (%)</span>
-                <input name="confidence_level" type="number" min="0" max="100" value="58" required />
+                <input name="confidence_level" type="number" min="0" max="100" placeholder="e.g. 50" required />
               </label>
               <label>
                 <span>Stress level (%)</span>
-                <input name="stress_level" type="number" min="0" max="100" value="43" required />
+                <input name="stress_level" type="number" min="0" max="100" placeholder="e.g. 40" required />
               </label>
               <label>
                 <span>Study style</span>
@@ -132,6 +132,14 @@
                   placeholder="e.g. College classes after 2 PM, low energy on Sundays"
                 />
               </label>
+              <label class="full-width" style="grid-column: 1 / -1;">
+                <span>Syllabus text (optional)</span>
+                <textarea
+                  name="syllabus_text"
+                  rows="3"
+                  placeholder="Paste your textual syllabus or specific topics you want the AI to plan around..."
+                ></textarea>
+              </label>
             </div>
 
             <div class="subjects-head">
@@ -146,7 +154,7 @@
 
             <div class="actions">
               <button type="submit" class="primary-button">Generate AI strategy</button>
-              <button type="button" id="reset-demo" class="secondary-button">Reset demo data</button>
+              <button type="button" id="reset-data" class="secondary-button">Reset data</button>
             </div>
           </form>
         </section>
@@ -176,7 +184,7 @@
           </section>
 
           <section class="output-block">
-            <span class="section-label">Weekly plan</span>
+            <span class="section-label">Complete roadmap timeline</span>
             <ul id="weekly-plan" class="result-list"></ul>
           </section>
 
@@ -192,23 +200,31 @@
               <span class="visual-dot"></span>
             </div>
             <div class="auth-visual-body planner-visual-body">
-              <div class="planner-metric-row">
-                <div class="planner-metric-head">
-                  <span>Readiness</span>
-                  <strong id="planner-line-primary-value">72%</strong>
+              <div class="rings-container">
+                <div class="ring-wrap">
+                  <svg class="circular-chart primary-chart" viewBox="0 0 36 36">
+                    <path class="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                    <path id="planner-ring-primary" class="circle" stroke-dasharray="72, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                  </svg>
+                  <div class="ring-content">
+                    <strong id="planner-line-primary-value">72%</strong>
+                    <span>Readiness</span>
+                  </div>
                 </div>
-                <div id="planner-line-primary" class="visual-line strong"></div>
-              </div>
-              <div class="planner-metric-row">
-                <div class="planner-metric-head">
-                  <span>Coverage</span>
-                  <strong id="planner-line-secondary-value">58%</strong>
+                <div class="ring-wrap">
+                  <svg class="circular-chart secondary-chart" viewBox="0 0 36 36">
+                    <path class="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                    <path id="planner-ring-secondary" class="circle" stroke-dasharray="58, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                  </svg>
+                  <div class="ring-content">
+                    <strong id="planner-line-secondary-value">58%</strong>
+                    <span>Coverage</span>
+                  </div>
                 </div>
-                <div id="planner-line-secondary" class="visual-line medium"></div>
               </div>
               <div id="planner-pill-row" class="visual-pill-row">
                 <span>Priority subjects</span>
-                <span>Weekly sprint</span>
+                <span>Roadmap segment</span>
                 <span>Risk alerts</span>
               </div>
               <div id="planner-chart" class="visual-chart planner-chart">
@@ -237,6 +253,6 @@
       });
     </script>
 
-    <script src="{{ url_for('static', path='/planner.js') }}" defer></script>
+    <script src="{{ url_for('static', path='/planner.js') }}?v=7" defer></script>
   </body>
 </html>

@@ -14,11 +14,14 @@ except ImportError:  # pragma: no cover
 
 
 SYSTEM_PROMPT = """You are an expert academic strategy coach.
-Generate concise, practical study guidance in JSON.
-Be specific, time-aware, and realistic.
+Generate concise, highly specific, practical study guidance in JSON.
+Be specific, time-aware, and realistic based on the provided subjects and syllabus text.
+IMPORTANT: You ARE the study plan. Do NOT tell the user to "create a study plan" or "make a schedule". Your output IS the detailed schedule and plan.
+Your `next_steps` must be immediate, actionable tasks to execute today based on their syllabus.
+Your `weekly_plan` must NOT just be one week. It MUST be a complete roadmap timeline spanning from today all the way until their target exam date. Divide it into chronological time blocks (e.g. "Week 1-2: Focus on X...", "Week 3-4: Mock tests..."). Tell them exactly what to study, how much to study, and when.
 Output JSON with keys:
-summary, next_steps, weekly_plan, risk_alerts, focus_subjects.
-Each list should contain 3 to 5 short string items.
+summary (a single paragraph string), next_steps, weekly_plan, risk_alerts, focus_subjects.
+The latter four keys MUST be flat lists containing 3 to 10 simple string items ONLY (e.g. ["Week 1: Read Unit 1", "Week 2: Full revision"]). DO NOT use objects or dictionaries inside the lists.
 """
 
 
@@ -268,6 +271,7 @@ def _build_user_prompt(payload: PlannerRequest) -> str:
             f"Stress level: {payload.stress_level}%",
             f"Study style: {payload.study_style}",
             f"Constraints: {payload.constraints or 'None'}",
+            f"Syllabus Text Outline: \n{payload.syllabus_text or 'None Provided'}",
             "Subjects:",
             *subject_lines,
         ]
@@ -276,15 +280,18 @@ def _build_user_prompt(payload: PlannerRequest) -> str:
 
 def generate_ai_strategy(payload: PlannerRequest) -> StrategyResponse:
     from dotenv import load_dotenv
-    load_dotenv()
+    load_dotenv(override=True)
     
-    api_key = os.getenv("OPENAI_API_KEY")
-    model = os.getenv("OPENAI_MODEL", "gpt-4o-mini") # ensure a valid model like 4o is used as default
+    api_key = os.getenv("GROQ_API_KEY")
+    model = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")
+
+    print(f"DEBUG: api_key exists={bool(api_key)}, OpenAI exists={bool(OpenAI is not None)}")
 
     if not api_key or OpenAI is None:
+        print("DEBUG: Condition met for fallback!")
         return build_fallback_strategy(payload)
 
-    client = OpenAI(api_key=api_key)
+    client = OpenAI(api_key=api_key, base_url="https://api.groq.com/openai/v1")
     try:
         response = client.chat.completions.create(
             model=model,
@@ -293,11 +300,12 @@ def generate_ai_strategy(payload: PlannerRequest) -> StrategyResponse:
                 {"role": "user", "content": _build_user_prompt(payload)}
             ],
             temperature=0.7,
+            response_format={"type": "json_object"}
         )
         raw_output = response.choices[0].message.content.strip()
     except Exception as e:
-        # Fallback if OpenAI call fully fails
-        print(f"OpenAI API failed: {e}")
+        # Fallback if Groq call fully fails
+        print(f"Groq API failed: {e}")
         raw_output = ""
 
     if not raw_output:
@@ -324,12 +332,32 @@ def generate_ai_strategy(payload: PlannerRequest) -> StrategyResponse:
             focus_subjects=[subject.name for subject in payload.subjects[:3]] or ["Add subjects for prioritization."],
         )
 
+    summary_val = parsed.get("summary", "")
+    if isinstance(summary_val, list):
+        summary_val = " ".join(str(s) for s in summary_val)
+        
+    def _normalize_list(items: Any) -> list[str]:
+        if not isinstance(items, list):
+            if isinstance(items, dict):
+                return [f"{k}: {v}" for k, v in items.items()]
+            return [str(items)] if items else []
+        norm = []
+        for item in items:
+            if isinstance(item, dict):
+                for k, v in item.items():
+                    norm.append(f"{k}: {v}")
+            elif isinstance(item, list):
+                norm.append(str(item))
+            else:
+                norm.append(str(item))
+        return norm[:6]
+
     return StrategyResponse(
         mode="ai",
         model=model,
-        summary=str(parsed.get("summary", "")).strip() or build_fallback_strategy(payload).summary,
-        next_steps=[str(item) for item in parsed.get("next_steps", [])][:5] or build_fallback_strategy(payload).next_steps,
-        weekly_plan=[str(item) for item in parsed.get("weekly_plan", [])][:5] or build_fallback_strategy(payload).weekly_plan,
-        risk_alerts=[str(item) for item in parsed.get("risk_alerts", [])][:5] or build_fallback_strategy(payload).risk_alerts,
-        focus_subjects=[str(item) for item in parsed.get("focus_subjects", [])][:5] or build_fallback_strategy(payload).focus_subjects,
+        summary=str(summary_val).strip() or build_fallback_strategy(payload).summary,
+        next_steps=_normalize_list(parsed.get("next_steps", [])) or build_fallback_strategy(payload).next_steps,
+        weekly_plan=_normalize_list(parsed.get("weekly_plan", [])) or build_fallback_strategy(payload).weekly_plan,
+        risk_alerts=_normalize_list(parsed.get("risk_alerts", [])) or build_fallback_strategy(payload).risk_alerts,
+        focus_subjects=_normalize_list(parsed.get("focus_subjects", [])) or build_fallback_strategy(payload).focus_subjects,
     )

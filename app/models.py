@@ -19,6 +19,7 @@ class PlannerRequest(BaseModel):
     stress_level: int = Field(..., ge=0, le=100)
     study_style: str = Field(..., min_length=2, max_length=40)
     constraints: str = Field(default="", max_length=600)
+    syllabus_text: str | None = Field(default=None, max_length=15000)
     subjects: list[SubjectInput] = Field(default_factory=list)
 
 

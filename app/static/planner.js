@@ -1,6 +1,6 @@
 const defaultSubjects = [
   {
-    name: "Polity",
+    name: "Politics",
     priority: 5,
     current_level: 61,
     target_level: 88,
@@ -28,7 +28,7 @@ const defaultSubjects = [
 const subjectsRoot = document.querySelector("#subjects");
 const plannerForm = document.querySelector("#planner-form");
 const addSubjectButton = document.querySelector("#add-subject");
-const resetDemoButton = document.querySelector("#reset-demo");
+const resetDataButton = document.querySelector("#reset-data");
 const summaryNode = document.querySelector("#summary");
 const statusPill = document.querySelector("#status-pill");
 const focusSubjectsNode = document.querySelector("#focus-subjects");
@@ -42,8 +42,8 @@ const savePlanButton = document.querySelector("#save-plan");
 const exportCurrentPdfButton = document.querySelector("#export-current-pdf");
 const plannerChartNode = document.querySelector("#planner-chart");
 const plannerPillRowNode = document.querySelector("#planner-pill-row");
-const plannerLinePrimaryNode = document.querySelector("#planner-line-primary");
-const plannerLineSecondaryNode = document.querySelector("#planner-line-secondary");
+const plannerLinePrimaryNode = document.querySelector("#planner-ring-primary");
+const plannerLineSecondaryNode = document.querySelector("#planner-ring-secondary");
 const plannerLinePrimaryValueNode = document.querySelector("#planner-line-primary-value");
 const plannerLineSecondaryValueNode = document.querySelector("#planner-line-secondary-value");
 
@@ -85,7 +85,7 @@ const subjectCard = (subject = {}) => {
   return wrapper;
 };
 
-const seedSubjects = (subjects = defaultSubjects) => {
+const seedSubjects = (subjects = []) => {
   subjectsRoot.innerHTML = "";
   subjects.forEach((subject) => subjectsRoot.appendChild(subjectCard(subject)));
 };
@@ -116,6 +116,7 @@ const buildPayload = () => {
     stress_level: Number(formData.get("stress_level")),
     study_style: formData.get("study_style"),
     constraints: formData.get("constraints"),
+    syllabus_text: formData.get("syllabus_text"),
     subjects: readSubjects(),
   };
 };
@@ -129,14 +130,35 @@ const populateForm = (payload) => {
   plannerForm.querySelector('[name="stress_level"]').value = payload.stress_level;
   plannerForm.querySelector('[name="study_style"]').value = payload.study_style;
   plannerForm.querySelector('[name="constraints"]').value = payload.constraints ?? "";
+  plannerForm.querySelector('[name="syllabus_text"]').value = payload.syllabus_text ?? "";
   seedSubjects(payload.subjects ?? []);
 };
 
-const renderList = (node, items) => {
+const renderList = (node, items, isTodo = false) => {
   node.innerHTML = "";
-  items.forEach((item) => {
+  items.forEach((item, index) => {
     const li = document.createElement("li");
-    li.textContent = item;
+    if (isTodo) {
+      const id = `todo-${node.id}-${index}`;
+      const label = document.createElement("label");
+      label.className = "todo-item";
+      
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.id = id;
+      checkbox.addEventListener("change", () => {
+        if (currentPayload) renderPlannerVisual(currentPayload, currentStrategy);
+      });
+      
+      const text = document.createElement("span");
+      text.textContent = item;
+      
+      label.appendChild(checkbox);
+      label.appendChild(text);
+      li.appendChild(label);
+    } else {
+      li.textContent = item;
+    }
     node.appendChild(li);
   });
 };
@@ -163,9 +185,9 @@ const renderPlannerVisual = (payload = null, strategy = null) => {
 
   let chartHeights = [...defaultChartHeights];
   let chartLabels = ["Subject A", "Subject B", "Subject C", "Subject D", "Subject E"];
-  let pills = ["Priority subjects", "Weekly sprint", "Risk alerts"];
-  let primaryWidth = "92%";
-  let secondaryWidth = "72%";
+  let pills = ["Priority subjects", "Roadmap segment", "Risk alerts"];
+  let primaryWidth = 72;
+  let secondaryWidth = 58;
   let readinessValue = 72;
   let coverageValue = 58;
 
@@ -199,32 +221,40 @@ const renderPlannerVisual = (payload = null, strategy = null) => {
     if (strategy) {
       pills = [
         strategy.focus_subjects?.[0] || "Priority subjects",
-        strategy.weekly_plan?.[0]?.split(":")[0] || "Weekly sprint",
+        strategy.weekly_plan?.[0]?.split(":")[0] || "Roadmap segment",
         strategy.risk_alerts?.[0]?.split(".")[0] || "Risk alerts",
       ];
     } else {
       pills = [
         rankedSubjects[0]?.name || "Priority subjects",
-        "Weekly sprint",
+        "Roadmap segment",
         "Risk alerts",
       ];
     }
 
-    readinessValue = Math.round(
-      rankedSubjects.reduce((sum, subject) => sum + subject.readiness, 0) /
-        Math.max(rankedSubjects.length, 1),
-    );
-    coverageValue = Math.round(
-      rankedSubjects.reduce((sum, subject) => sum + subject.syllabus_coverage, 0) /
-        Math.max(rankedSubjects.length, 1),
-    );
+    let bonus = 0;
+    const todos = document.querySelectorAll(".todo-item input[type='checkbox']");
+    if (todos.length > 0) {
+      const checkedTodos = Array.from(todos).filter(t => t.checked).length;
+      bonus = Math.round((checkedTodos / todos.length) * 15);
+    }
 
-    primaryWidth = `${Math.max(18, Math.min(100, readinessValue))}%`;
-    secondaryWidth = `${Math.max(18, Math.min(100, coverageValue))}%`;
+    readinessValue = Math.min(100, Math.round(
+      rankedSubjects.reduce((sum, subject) => sum + subject.readiness, 0) /
+      Math.max(rankedSubjects.length, 1),
+    ) + bonus);
+    
+    coverageValue = Math.min(100, Math.round(
+      rankedSubjects.reduce((sum, subject) => sum + subject.syllabus_coverage, 0) /
+      Math.max(rankedSubjects.length, 1),
+    ) + bonus);
+
+    primaryWidth = Math.max(0, Math.min(100, readinessValue));
+    secondaryWidth = Math.max(0, Math.min(100, coverageValue));
   }
 
-  plannerLinePrimaryNode.style.width = primaryWidth;
-  plannerLineSecondaryNode.style.width = secondaryWidth;
+  plannerLinePrimaryNode.setAttribute("stroke-dasharray", `${primaryWidth}, 100`);
+  plannerLineSecondaryNode.setAttribute("stroke-dasharray", `${secondaryWidth}, 100`);
   if (plannerLinePrimaryValueNode) {
     plannerLinePrimaryValueNode.textContent = `${readinessValue}%`;
   }
@@ -273,13 +303,13 @@ const renderPlannerVisual = (payload = null, strategy = null) => {
 const renderStrategy = (result) => {
   currentStrategy = result;
   summaryNode.textContent = result.summary;
-  renderList(nextStepsNode, result.next_steps);
-  renderList(weeklyPlanNode, result.weekly_plan);
-  renderList(riskAlertsNode, result.risk_alerts);
+  renderList(nextStepsNode, result.next_steps, true);
+  renderList(weeklyPlanNode, result.weekly_plan, true);
+  renderList(riskAlertsNode, result.risk_alerts, false);
   renderChips(result.focus_subjects);
   renderPlannerVisual(currentPayload, result);
   setStatus(
-    result.mode === "ai" ? `AI strategy ready via ${result.model}` : "Fallback strategy ready",
+    result.mode === "ai" ? "AI strategy ready" : "Fallback strategy ready",
     result.mode === "ai" ? "success" : "fallback",
   );
 };
@@ -325,6 +355,7 @@ const renderSavedPlans = (plans) => {
       <div class="saved-plan-actions">
         <button type="button" class="ghost-button load-plan">Load</button>
         <button type="button" class="ghost-button pdf-plan">PDF</button>
+        <button type="button" class="ghost-button delete-plan">Delete</button>
       </div>
     `;
 
@@ -343,6 +374,16 @@ const renderSavedPlans = (plans) => {
 
     card.querySelector(".pdf-plan").addEventListener("click", () => {
       window.open(`/api/plans/${plan.id}/pdf`, "_blank");
+    });
+
+    card.querySelector(".delete-plan").addEventListener("click", async () => {
+      if (!window.confirm(`Are you sure you want to delete the plan "${plan.title}"?`)) return;
+      const response = await fetch(`/api/plans/${plan.id}`, { method: "DELETE" });
+      if (response.status === 401) {
+        window.location.href = "/login";
+        return;
+      }
+      await refreshSavedPlans();
     });
 
     savedPlansNode.appendChild(card);
@@ -441,10 +482,10 @@ addSubjectButton.addEventListener("click", () => {
   renderPlannerVisual(buildPreviewPayload(), currentStrategy);
 });
 
-resetDemoButton.addEventListener("click", () => {
+resetDataButton.addEventListener("click", () => {
   plannerForm.reset();
   setDefaultDate();
-  seedSubjects();
+  seedSubjects([]);
   currentPayload = null;
   currentStrategy = null;
   renderPlannerVisual();
@@ -465,6 +506,6 @@ plannerForm.addEventListener("change", () => {
 });
 
 setDefaultDate();
-seedSubjects();
+seedSubjects([]);
 renderPlannerVisual(buildPreviewPayload(), null);
 refreshSavedPlans();

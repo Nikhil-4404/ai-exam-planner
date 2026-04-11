@@ -8,7 +8,7 @@ from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
 
 from app.ai import generate_ai_strategy
-from app.db import create_user, get_saved_plan, get_user_by_id, initialize_database, list_saved_plans, save_plan, authenticate_user
+from app.db import create_user, get_saved_plan, get_user_by_id, initialize_database, list_saved_plans, save_plan, authenticate_user, delete_plan
 from app.models import (
     AuthLoginRequest,
     AuthRegisterRequest,
@@ -170,6 +170,15 @@ async def plan_detail(request: Request, plan_id: int) -> SavedPlanDetail:
     if plan is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Plan not found.")
     return plan
+
+
+@app.delete("/api/plans/{plan_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def remove_plan(request: Request, plan_id: int) -> Response:
+    user = require_user(request)
+    deleted = delete_plan(user.id, plan_id)
+    if not deleted:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Plan not found.")
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @app.get("/api/plans/{plan_id}/pdf")

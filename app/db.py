@@ -198,3 +198,12 @@ def get_saved_plan(user_id: int, plan_id: int) -> SavedPlanDetail | None:
         payload=payload,
         strategy=strategy,
     )
+
+
+def delete_plan(user_id: int, plan_id: int) -> bool:
+    with get_connection() as connection:
+        cursor = connection.execute(
+            "DELETE FROM saved_plans WHERE user_id = ? AND id = ?",
+            (user_id, plan_id),
+        )
+        return cursor.rowcount > 0
