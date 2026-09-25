@@ -100,3 +100,5 @@ This project is ready for Render, Railway, Heroku, or any platform that can run 
 - If `GROQ_API_KEY` is missing, the app still works using the fallback planner.
 - Saved plans are tied to the logged-in user session.
 - PDF export works for both the current generated plan and saved plans.
+
+<img width="3966" height="6757" alt="exam planner" src="https://github.com/user-attachments/assets/b679f74d-6d09-4ba4-b66c-0d918e7919fe" />
